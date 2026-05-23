@@ -1,0 +1,272 @@
+/* Custom Animations and Styling for DroidCam MVP */
+
+/* Subtle background glowing animations */
+@keyframes glow-pulse {
+    0%, 100% {
+        opacity: 0.15;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.glow-indigo {
+    filter: blur(80px);
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, rgba(0, 0, 0, 0) 70%);
+    animation: glow-pulse 6s infinite ease-in-out;
+}
+
+.glow-teal {
+    filter: blur(80px);
+    background: radial-gradient(circle, rgba(20, 184, 166, 0.3) 0%, rgba(0, 0, 0, 0) 70%);
+    animation: glow-pulse 8s infinite ease-in-out;
+}
+
+/* Glassmorphism panel styling */
+.glass-panel {
+    background: rgba(19, 21, 32, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Border highlighting customization */
+.border-gray-850 {
+    border-color: rgba(255, 255, 255, 0.07);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #090a0f;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1f2937;
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4b5563;
+}
+
+/* Smooth button scaling */
+button {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Recording Pulse Animation ─── */
+@keyframes rec-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1.15);
+    }
+}
+
+.rec-dot {
+    animation: rec-pulse 1s infinite ease-in-out;
+}
+
+@keyframes rec-ring {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+.rec-ring {
+    animation: rec-ring 1.5s infinite;
+}
+
+/* ─── Fullscreen Styles ─── */
+.viewport-container:fullscreen,
+#viewport-container:fullscreen {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.viewport-container:fullscreen #video-area,
+#viewport-container:fullscreen #video-area {
+    width: 100%;
+    height: 100%;
+    min-height: 100% !important;
+}
+
+.viewport-container:fullscreen .fullscreen-hide,
+#viewport-container:fullscreen .fullscreen-hide {
+    display: none !important;
+}
+
+.viewport-container:fullscreen img,
+.viewport-container:fullscreen video,
+#viewport-container:fullscreen img,
+#viewport-container:fullscreen video {
+    max-width: 100vw;
+    max-height: 100vh;
+    object-fit: contain;
+}
+
+.viewport-container:-webkit-full-screen,
+#viewport-container:-webkit-full-screen {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.viewport-container:-webkit-full-screen #video-area,
+#viewport-container:-webkit-full-screen #video-area {
+    width: 100%;
+    height: 100%;
+    min-height: 100% !important;
+}
+
+/* ─── Recordings Grid Styles ─── */
+.recording-card {
+    background: rgba(19, 21, 32, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    transition: all 0.25s ease;
+}
+
+.recording-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Video Player Modal ─── */
+.video-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.video-modal-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.video-modal-content {
+    max-width: 90vw;
+    max-height: 85vh;
+    border-radius: 1rem;
+    overflow: hidden;
+    background: #131520;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.video-modal-overlay.active .video-modal-content {
+    transform: scale(1);
+}
+
+.video-modal-content video {
+    width: 100%;
+    max-height: 80vh;
+    outline: none;
+}
+
+/* ─── Custom Select Styling ─── */
+.custom-select {
+    background-color: #131520;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #e5e7eb;
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.4rem center;
+    padding-right: 1.5rem;
+    transition: border-color 0.2s ease;
+}
+
+.custom-select:hover {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.custom-select:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+/* ─── Tab Styles ─── */
+.nav-tab {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.nav-tab:hover {
+    color: #d1d5db;
+}
+
+.nav-tab.active {
+    color: #6366f1;
+    border-color: #6366f1;
+}
+
+/* ─── Empty State ─── */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    color: #4b5563;
+}
+
+.empty-state svg {
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+}
+
+/* ─── Badge Pill ─── */
+.badge-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    border-radius: 9999px;
+    letter-spacing: 0.025em;
+}

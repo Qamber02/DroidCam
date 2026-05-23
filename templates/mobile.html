@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DroidCam — Camera</title>
+    <meta name="description" content="DroidCam mobile camera controller — stream your phone camera to PC">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#090a0f',
+                        darkCard: '#131520',
+                        brandPurple: '#6366f1',
+                        brandTeal: '#14b8a6',
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                    },
+                },
+            },
+        };
+    </script>
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            overscroll-behavior-y: contain;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .animate-pulse-dot {
+            animation: pulse-dot 1.2s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spin 1.2s linear infinite;
+        }
+
+        /* Custom range slider */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 9999px;
+            background: #1e2030;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            border: 2px solid #090a0f;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #6366f1;
+            cursor: pointer;
+            border: 2px solid #090a0f;
+        }
+    </style>
+</head>
+
+<body class="bg-darkBg text-white font-sans h-full overflow-hidden">
+
+    <!-- ===== PIN AUTH OVERLAY ===== -->
+    <div id="pin-overlay" class="fixed inset-0 flex flex-col items-center justify-center bg-darkBg/95 z-50">
+        <div class="w-full max-w-xs px-6 py-8 bg-darkCard border border-white/10 rounded-2xl text-center space-y-6 shadow-2xl">
+            <div class="flex justify-center">
+                <div class="w-12 h-12 rounded-full bg-brandPurple/20 flex items-center justify-center text-brandPurple">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="space-y-1">
+                <h3 class="text-lg font-semibold text-white">Pairing PIN Required</h3>
+                <p class="text-xs text-gray-400">Enter the 6-digit PIN shown on the PC dashboard to begin</p>
+            </div>
+            <div class="flex justify-center gap-2">
+                <input type="text" maxlength="6" pattern="\d{6}" inputmode="numeric" id="pin-input" class="w-48 tracking-[0.5em] text-center text-xl font-bold bg-darkBg border border-white/10 rounded-xl py-3 focus:outline-none focus:border-brandPurple focus:ring-1 focus:ring-brandPurple" placeholder="••••••">
+            </div>
+            <button id="btn-auth-pin" class="w-full h-11 bg-brandPurple hover:bg-brandPurple/90 text-white font-semibold rounded-xl active:scale-95 transition-transform">
+                Connect Camera
+            </button>
+            <p id="pin-error" class="text-xs text-red-400 hidden">Incorrect PIN. Please try again.</p>
+        </div>
+    </div>
+
+    <!-- ===== ROOT LAYOUT — full-screen flex column ===== -->
+    <div id="app-root" class="flex flex-col h-full min-h-screen">
+
+        <!-- ===== HEADER BAR ===== -->
+        <header id="header-bar" class="flex items-center justify-between px-3 py-2 bg-darkCard/80 backdrop-blur-md border-b border-white/5 z-30 shrink-0">
+            <!-- Left: Socket Status -->
+            <div id="socket-status" class="flex items-center gap-1.5">
+                <span id="socket-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse-dot"></span>
+                <span id="socket-label" class="text-xs font-medium text-gray-400">Connecting...</span>
+            </div>
+
+            <!-- Right: Badges -->
+            <div class="flex items-center gap-1.5">
+                <!-- Stream Indicator -->
+                <span id="stream-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-gray-700/60 text-gray-400">
+                    <span id="stream-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                    <span id="stream-label">Standby</span>
+                </span>
+                <!-- Quality Badge -->
+                <span id="quality-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brandPurple/20 text-brandPurple">480p</span>
+                <!-- FPS Badge -->
+                <span id="fps-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brandTeal/20 text-brandTeal">15 FPS</span>
+            </div>
+        </header>
+
+        <!-- ===== MAIN AREA — Camera Preview ===== -->
+        <main id="camera-area" class="relative flex-1 bg-black overflow-hidden">
+            <!-- Video Preview -->
+            <video id="camera-preview" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+
+            <!-- Loading Spinner Overlay -->
+            <div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-darkBg/80 z-10">
+                <svg class="w-10 h-10 text-brandPurple animate-spin-slow" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="50 20" />
+                </svg>
+                <span class="mt-3 text-xs text-gray-400 font-medium">Initializing camera…</span>
+            </div>
+
+            <!-- Error Overlay -->
+            <div id="error-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-darkBg/90 z-10 hidden">
+                <svg class="w-12 h-12 text-red-400 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span id="error-title" class="text-sm font-semibold text-red-300 mb-1">Camera Error</span>
+                <span id="error-message" class="text-xs text-gray-400 text-center px-8 leading-relaxed">Unable to access camera. Please grant camera permissions and reload.</span>
+            </div>
+
+            <!-- Stats Overlay (bottom-left) -->
+            <div id="stats-overlay" class="absolute bottom-3 left-3 flex flex-col gap-0.5 bg-black/60 backdrop-blur-sm rounded-lg px-2.5 py-1.5 z-10 hidden">
+                <span id="stats-resolution" class="text-[10px] font-mono text-gray-300">—</span>
+                <span id="stats-frame-size" class="text-[10px] font-mono text-gray-400">—</span>
+            </div>
+        </main>
+
+        <!-- ===== FOOTER — Settings & Actions ===== -->
+        <footer id="footer-panel" class="bg-darkCard/90 backdrop-blur-md border-t border-white/5 z-30 shrink-0">
+
+            <!-- Settings Panel -->
+            <div id="settings-panel" class="px-4 pt-3 pb-2 space-y-3">
+
+                <!-- Camera selector -->
+                <div class="flex items-center gap-2">
+                    <label for="camera-select" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Camera</label>
+                    <select id="camera-select" class="flex-1 bg-darkBg border border-white/10 rounded-lg px-2.5 py-2 text-xs text-gray-200 focus:outline-none focus:border-brandPurple/50 appearance-none truncate">
+                        <option value="">Detecting cameras…</option>
+                    </select>
+                </div>
+
+                <!-- JPEG Quality slider -->
+                <div class="flex items-center gap-2">
+                    <label for="quality-slider" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Quality</label>
+                    <input id="quality-slider" type="range" min="10" max="95" value="45" class="flex-1">
+                    <span id="quality-slider-value" class="text-xs text-gray-400 font-mono w-8 text-right">45%</span>
+                </div>
+
+                <!-- FPS display (read-only) -->
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">FPS</span>
+                    <span id="fps-display" class="text-xs text-gray-300 font-mono">15</span>
+                    <span class="text-[10px] text-gray-500">(controlled remotely)</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div id="action-buttons" class="flex items-center gap-2 px-4 pb-4 pt-1">
+                <!-- Refresh Devices -->
+                <button id="btn-refresh" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform" title="Refresh devices">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <polyline points="1 20 1 14 7 14"/>
+                        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/>
+                        <path d="M20.49 15a9 9 0 01-14.85 3.36L1 14"/>
+                    </svg>
+                </button>
+
+                <!-- Flip Camera -->
+                <button id="btn-flip" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform" title="Flip camera">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 3h5v5"/>
+                        <path d="M8 21H3v-5"/>
+                        <path d="M21 3l-7 7"/>
+                        <path d="M3 21l7-7"/>
+                    </svg>
+                </button>
+
+                <!-- Start / Stop Streaming -->
+                <button id="btn-stream" class="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl bg-brandPurple text-white font-semibold text-sm active:scale-95 transition-transform">
+                    <!-- Play icon -->
+                    <svg id="icon-play" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    <!-- Stop icon (hidden by default) -->
+                    <svg id="icon-stop" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="6" width="12" height="12" rx="1"/>
+                    </svg>
+                    <span id="btn-stream-label">Start Streaming</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ===== SocketIO ===== -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+    <script>
+    (function () {
+        'use strict';
+
+        // ——————————————————————————————————
+        // Quality presets
+        // ——————————————————————————————————
+        const QUALITY_PRESETS = {
+            '360p':  { width: 480,  height: 360  },
+            '480p':  { width: 640,  height: 480  },
+            '720p':  { width: 1280, height: 720  },
+            '1080p': { width: 1920, height: 1080 },
+        };
+
+        // ——————————————————————————————————
+        // State
+        // ——————————————————————————————————
+        let localStream = null;
+        let isStreaming = false;
+        let frameTimeout = null;
+        let selectedDeviceId = '';
+        let isProcessingFrame = false;
+        let currentQuality = '480p';
+        let currentMaxWidth = 640;
+        let currentMaxHeight = 480;
+        let currentFps = 15;
+        let currentJpegQuality = 45;
+
+        // Hidden canvas for frame capture
+        const captureCanvas = document.createElement('canvas');
+        const captureCtx = captureCanvas.getContext('2d');
+
+        // ——————————————————————————————————
+        // DOM References
+        // ——————————————————————————————————
+        const video              = document.getElementById('camera-preview');
+        const loadingOverlay     = document.getElementById('loading-overlay');
+        const errorOverlay       = document.getElementById('error-overlay');
+        const errorTitle         = document.getElementById('error-title');
+        const errorMessage       = document.getElementById('error-message');
+        const statsOverlay       = document.getElementById('stats-overlay');
+        const statsResolution    = document.getElementById('stats-resolution');
+        const statsFrameSize     = document.getElementById('stats-frame-size');
+
+        const socketDot          = document.getElementById('socket-dot');
+        const socketLabel        = document.getElementById('socket-label');
+        const streamBadge        = document.getElementById('stream-badge');
+        const streamDot          = document.getElementById('stream-dot');
+        const streamLabel        = document.getElementById('stream-label');
+        const qualityBadge       = document.getElementById('quality-badge');
+        const fpsBadge           = document.getElementById('fps-badge');
+
+        const cameraSelect       = document.getElementById('camera-select');
+        const qualitySlider      = document.getElementById('quality-slider');
+        const qualitySliderValue = document.getElementById('quality-slider-value');
+        const fpsDisplay         = document.getElementById('fps-display');
+
+        const btnRefresh         = document.getElementById('btn-refresh');
+        const btnFlip            = document.getElementById('btn-flip');
+        const btnStream          = document.getElementById('btn-stream');
+        const btnStreamLabel     = document.getElementById('btn-stream-label');
+        const iconPlay           = document.getElementById('icon-play');
+        const iconStop           = document.getElementById('icon-stop');
+
+        // ——————————————————————————————————
+        // Socket
+        // ——————————————————————————————————
+        const socket = io({ secure: true, rejectUnauthorized: false });
+
+        socket.on('require_pin', () => {
+            document.getElementById('pin-overlay').classList.remove('hidden');
+            document.getElementById('pin-input').value = '';
+            document.getElementById('pin-error').classList.add('hidden');
+        });
+
+        socket.on('pin_auth_status', (res) => {
+            if (res.success) {
+                document.getElementById('pin-overlay').classList.add('hidden');
+                initCamera();
+            } else {
+                const errEl = document.getElementById('pin-error');
+                errEl.textContent = res.message || 'Incorrect PIN. Please try again.';
+                errEl.classList.remove('hidden');
+            }
+        });
+
+        const pinInput = document.getElementById('pin-input');
+        const btnAuthPin = document.getElementById('btn-auth-pin');
+        btnAuthPin.addEventListener('click', () => {
+            const pin = pinInput.value.trim();
+            if (pin.length === 6 && /^\d+$/.test(pin)) {
+                document.getElementById('pin-error').classList.add('hidden');
+                socket.emit('pin_auth', { pin: pin });
+            } else {
+                const errEl = document.getElementById('pin-error');
+                errEl.textContent = 'Please enter a 6-digit number.';
+                errEl.classList.remove('hidden');
+            }
+        });
+        pinInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') btnAuthPin.click();
+        });
+
+        socket.on('connect', () => {
+            socket.emit('join', { client_type: 'mobile' });
+            socketDot.classList.remove('bg-red-500', 'animate-pulse-dot');
+            socketDot.classList.add('bg-green-500');
+            socketLabel.textContent = 'Connected';
+            socketLabel.classList.remove('text-gray-400');
+            socketLabel.classList.add('text-green-400');
+        });
+
+        socket.on('disconnect', () => {
+            socketDot.classList.remove('bg-green-500');
+            socketDot.classList.add('bg-red-500', 'animate-pulse-dot');
+            socketLabel.textContent = 'Connecting...';
+            socketLabel.classList.remove('text-green-400');
+            socketLabel.classList.add('text-gray-400');
+        });
+
+        // ——————————————————————————————————
+        // Remote Control Handlers
+        // ——————————————————————————————————
+
+        socket.on('toggle_stream', (data) => {
+            if (data.start && !isStreaming) {
+                startStreaming();
+            } else if (!data.start && isStreaming) {
+                stopStreaming();
+            }
+        });
+
+        socket.on('switch_camera', () => {
+            flipCamera();
+        });
+
+        socket.on('select_camera', (data) => {
+            if (!data || !data.device_id) return;
+            selectedDeviceId = data.device_id;
+            cameraSelect.value = selectedDeviceId;
+
+            const wasStreaming = isStreaming;
+            if (isStreaming) stopStreaming();
+
+            initCamera().then(() => {
+                if (wasStreaming) startStreaming();
+            });
+        });
+
+        socket.on('set_quality', (data) => {
+            if (!data) return;
+            currentQuality = data.quality || currentQuality;
+            currentMaxWidth = data.width || currentMaxWidth;
+            currentMaxHeight = data.height || currentMaxHeight;
+
+            qualityBadge.textContent = currentQuality;
+
+            if (localStream) {
+                const wasStreaming = isStreaming;
+                if (isStreaming) stopStreaming();
+
+                initCamera().then(() => {
+                    if (wasStreaming) startStreaming();
+                });
+            }
+        });
+
+        socket.on('set_fps', (data) => {
+            if (!data || !data.fps) return;
+            currentFps = data.fps;
+            fpsBadge.textContent = currentFps + ' FPS';
+            fpsDisplay.textContent = currentFps;
+
+            if (isStreaming) {
+                restartSendingLoop();
+            }
+        });
+
+        // ——————————————————————————————————
+        // Camera Initialization
+        // ——————————————————————————————————
+
+        async function initCamera() {
+            loadingOverlay.classList.remove('hidden');
+            errorOverlay.classList.add('hidden');
+            statsOverlay.classList.add('hidden');
+
+            // Stop existing tracks
+            if (localStream) {
+                localStream.getTracks().forEach(t => t.stop());
+                localStream = null;
+            }
+
+            const constraints = {
+                video: {
+                    width:  { ideal: currentMaxWidth },
+                    height: { ideal: currentMaxHeight },
+                    facingMode: 'environment',
+                },
+                audio: false,
+            };
+
+            if (selectedDeviceId) {
+                constraints.video.deviceId = { exact: selectedDeviceId };
+                delete constraints.video.facingMode;
+            }
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = localStream;
+
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        const vw = video.videoWidth;
+                        const vh = video.videoHeight;
+                        statsResolution.textContent = vw + ' × ' + vh;
+                        statsOverlay.classList.remove('hidden');
+                        loadingOverlay.classList.add('hidden');
+                        resolve();
+                    };
+                });
+
+                await loadCameraDevices();
+            } catch (err) {
+                console.error('Camera init error:', err);
+                loadingOverlay.classList.add('hidden');
+                showError('Camera Error', friendlyError(err));
+            }
+        }
+
+        function friendlyError(err) {
+            if (err.name === 'NotAllowedError') {
+                return 'Camera permission denied. Please allow camera access in your browser settings and reload.';
+            }
+            if (err.name === 'NotFoundError') {
+                return 'No camera found on this device.';
+            }
+            if (err.name === 'NotReadableError' || err.name === 'AbortError') {
+                return 'Camera is in use by another application. Close other apps and try again.';
+            }
+            if (err.name === 'OverconstrainedError') {
+                return 'Selected camera does not support the requested resolution. Try a different quality preset.';
+            }
+            return err.message || 'An unknown camera error occurred.';
+        }
+
+        function showError(title, message) {
+            errorTitle.textContent = title;
+            errorMessage.textContent = message;
+            errorOverlay.classList.remove('hidden');
+        }
+
+        // ——————————————————————————————————
+        // Camera Enumeration
+        // ——————————————————————————————————
+
+        async function loadCameraDevices() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const cameras = devices.filter(d => d.kind === 'videoinput');
+
+                cameraSelect.innerHTML = '';
+
+                cameras.forEach((cam, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = cam.deviceId;
+                    opt.textContent = cam.label || ('Camera ' + (i + 1));
+                    cameraSelect.appendChild(opt);
+                });
+
+                // Try to restore previous selection
+                if (selectedDeviceId && cameras.some(c => c.deviceId === selectedDeviceId)) {
+                    cameraSelect.value = selectedDeviceId;
+                } else {
+                    // Default to back/environment camera if possible
+                    const backCam = cameras.find(c => /back|rear|environment/i.test(c.label));
+                    if (backCam) {
+                        selectedDeviceId = backCam.deviceId;
+                    } else if (cameras.length > 0) {
+                        selectedDeviceId = cameras[0].deviceId;
+                    }
+                    cameraSelect.value = selectedDeviceId;
+                }
+
+                // Emit cameras_updated
+                const cameraList = cameras.map(c => ({
+                    id: c.deviceId,
+                    label: c.label || 'Camera',
+                }));
+                socket.emit('cameras_updated', {
+                    cameras: cameraList,
+                    active_camera: selectedDeviceId,
+                });
+
+            } catch (err) {
+                console.error('Device enumeration error:', err);
+            }
+        }
+
+        // ——————————————————————————————————
+        // Frame Capture & Sending
+        // ——————————————————————————————————
+
+        function sendFrame() {
+            // Clear any pending timeout
+            if (frameTimeout) {
+                clearTimeout(frameTimeout);
+                frameTimeout = null;
+            }
+
+            if (!isStreaming) return;
+
+            if (isProcessingFrame) {
+                scheduleNextFrame();
+                return;
+            }
+
+            if (video.readyState < video.HAVE_CURRENT_DATA) {
+                scheduleNextFrame();
+                return;
+            }
+
+            isProcessingFrame = true;
+
+            const vw = video.videoWidth;
+            const vh = video.videoHeight;
+
+            // Scale to fit within max dimensions keeping aspect ratio
+            let drawW = vw;
+            let drawH = vh;
+            const scaleW = currentMaxWidth / vw;
+            const scaleH = currentMaxHeight / vh;
+            const scale = Math.min(scaleW, scaleH, 1); // never upscale
+            drawW = Math.round(vw * scale);
+            drawH = Math.round(vh * scale);
+
+            captureCanvas.width = drawW;
+            captureCanvas.height = drawH;
+            captureCtx.drawImage(video, 0, 0, drawW, drawH);
+
+            const jpegQual = currentJpegQuality / 100;
+
+            captureCanvas.toBlob((blob) => {
+                if (blob && isStreaming) {
+                    socket.emit('frame', {
+                        image: blob,
+                        timestamp: Date.now(),
+                    });
+
+                    // Update stats
+                    const sizeKB = (blob.size / 1024).toFixed(1);
+                    statsFrameSize.textContent = sizeKB + ' KB';
+                }
+
+                isProcessingFrame = false;
+                scheduleNextFrame();
+            }, 'image/jpeg', jpegQual);
+        }
+
+        function scheduleNextFrame() {
+            if (!isStreaming) return;
+            const intervalMs = Math.round(1000 / currentFps);
+            frameTimeout = setTimeout(sendFrame, intervalMs);
+        }
+
+        function restartSendingLoop() {
+            if (frameTimeout) {
+                clearTimeout(frameTimeout);
+                frameTimeout = null;
+            }
+            if (isStreaming) {
+                sendFrame();
+            }
+        }
+
+        // ——————————————————————————————————
+        // Streaming Controls
+        // ——————————————————————————————————
+
+        function startStreaming() {
+            if (isStreaming) return;
+            if (!localStream) return;
+
+            isStreaming = true;
+            updateStreamUI(true);
+
+            socket.emit('stream_state_change', { is_streaming: true });
+            sendFrame();
+        }
+
+        function stopStreaming() {
+            isStreaming = false;
+
+            if (frameTimeout) {
+                clearTimeout(frameTimeout);
+                frameTimeout = null;
+            }
+
+            updateStreamUI(false);
+            socket.emit('stream_state_change', { is_streaming: false });
+        }
+
+        function updateStreamUI(streaming) {
+            if (streaming) {
+                // Stream badge
+                streamBadge.classList.remove('bg-gray-700/60', 'text-gray-400');
+                streamBadge.classList.add('bg-red-500/20', 'text-red-400');
+                streamDot.classList.remove('bg-gray-500');
+                streamDot.classList.add('bg-red-500', 'animate-pulse-dot');
+                streamLabel.textContent = 'Streaming';
+
+                // Button
+                btnStream.classList.remove('bg-brandPurple');
+                btnStream.classList.add('bg-red-600');
+                btnStreamLabel.textContent = 'Stop Streaming';
+                iconPlay.classList.add('hidden');
+                iconStop.classList.remove('hidden');
+            } else {
+                // Stream badge
+                streamBadge.classList.remove('bg-red-500/20', 'text-red-400');
+                streamBadge.classList.add('bg-gray-700/60', 'text-gray-400');
+                streamDot.classList.remove('bg-red-500', 'animate-pulse-dot');
+                streamDot.classList.add('bg-gray-500');
+                streamLabel.textContent = 'Standby';
+
+                // Button
+                btnStream.classList.remove('bg-red-600');
+                btnStream.classList.add('bg-brandPurple');
+                btnStreamLabel.textContent = 'Start Streaming';
+                iconPlay.classList.remove('hidden');
+                iconStop.classList.add('hidden');
+            }
+        }
+
+        // ——————————————————————————————————
+        // Flip Camera
+        // ——————————————————————————————————
+
+        async function flipCamera() {
+            const options = cameraSelect.options;
+            if (options.length <= 1) return;
+
+            let idx = cameraSelect.selectedIndex;
+            idx = (idx + 1) % options.length;
+            cameraSelect.selectedIndex = idx;
+            selectedDeviceId = options[idx].value;
+
+            const wasStreaming = isStreaming;
+            if (isStreaming) stopStreaming();
+
+            await initCamera();
+
+            if (wasStreaming) startStreaming();
+        }
+
+        // ——————————————————————————————————
+        // Event Listeners
+        // ——————————————————————————————————
+
+        // Camera select change
+        cameraSelect.addEventListener('change', async () => {
+            selectedDeviceId = cameraSelect.value;
+
+            const wasStreaming = isStreaming;
+            if (isStreaming) stopStreaming();
+
+            await initCamera();
+
+            if (wasStreaming) startStreaming();
+        });
+
+        // Quality slider
+        qualitySlider.addEventListener('input', () => {
+            currentJpegQuality = parseInt(qualitySlider.value, 10);
+            qualitySliderValue.textContent = currentJpegQuality + '%';
+        });
+
+        // Refresh devices
+        btnRefresh.addEventListener('click', async () => {
+            await loadCameraDevices();
+        });
+
+        // Flip camera
+        btnFlip.addEventListener('click', () => {
+            flipCamera();
+        });
+
+        // Start / Stop streaming
+        btnStream.addEventListener('click', () => {
+            if (isStreaming) {
+                stopStreaming();
+            } else {
+                startStreaming();
+            }
+        });
+
+        // ——————————————————————————————————
+        // Init
+        // ——————————————————————————————————
+        // Init is handled after PIN auth
+        // initCamera();
+
+    })();
+    </script>
+
+</body>
+</html>

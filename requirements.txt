@@ -1,0 +1,7 @@
+Flask
+Flask-SocketIO
+qrcode
+pillow
+eventlet
+opencv-python-headless
+python-dotenv

@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DroidCam MVP — Dashboard</title>
+  <meta name="description" content="DroidCam MVP PC Dashboard — stream your phone camera to your PC in real-time over WiFi or USB." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS v3 CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: { purple: '#6366f1', teal: '#14b8a6' },
+            surface: { base: '#090a0f', card: '#131520', cardHover: '#1a1d2e', border: '#1e2233', overlay: 'rgba(9,10,15,.85)' }
+          },
+          boxShadow: {
+            glow: '0 0 20px rgba(99,102,241,.25)',
+            teal: '0 0 20px rgba(20,184,166,.25)',
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- App CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e2233; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2a2f45; }
+
+    /* Pulse animation for live/rec indicators */
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+    .animate-pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
+
+    @keyframes rec-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.6); } 70% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+    .animate-rec-pulse { animation: rec-pulse 1.5s ease-in-out infinite; }
+
+    /* Fullscreen tweaks */
+    #viewport-container:fullscreen { background: #000; }
+    #viewport-container:fullscreen #bottom-toolbar-labels { display: none; }
+    /* Removed forced object-fit: contain to allow fit/fill toggle */
+
+    /* Glass panel */
+    .glass { background: rgba(19,21,32,.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(30,34,51,.6); }
+
+    /* Smooth select */
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' stroke='%239ca3af' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right .5rem center; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+
+    /* Transition helper */
+    .transition-gpu { transition-property: all; transition-timing-function: cubic-bezier(.4,0,.2,1); transition-duration: 200ms; will-change: transform, opacity; }
+  </style>
+</head>
+
+<body class="bg-surface-base text-gray-200 font-sans h-full overflow-x-hidden antialiased">
+
+  <!-- ══════════════════════════ TOP NAVBAR ══════════════════════════ -->
+  <header class="sticky top-0 z-50 glass border-b border-surface-border">
+    <div class="max-w-[1600px] mx-auto flex items-center justify-between px-4 sm:px-6 h-14">
+      <!-- Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple to-brand-teal flex items-center justify-center shadow-glow">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        </div>
+        <span class="text-sm font-bold tracking-tight hidden sm:inline bg-gradient-to-r from-brand-purple to-brand-teal bg-clip-text text-transparent">DroidCam MVP</span>
+      </div>
+
+      <!-- Centre: Tabs -->
+      <nav class="flex items-center gap-1 bg-surface-card rounded-lg p-1">
+        <button id="tab-livestream" onclick="switchTab('livestream')" class="tab-btn px-4 py-1.5 text-xs font-semibold rounded-md transition-gpu active">Live Stream</button>
+        <button id="tab-recordings" onclick="switchTab('recordings')" class="tab-btn px-4 py-1.5 text-xs font-semibold rounded-md transition-gpu">Recordings</button>
+        <button id="tab-snapshots" onclick="switchTab('snapshots')" class="tab-btn px-4 py-1.5 text-xs font-semibold rounded-md transition-gpu">Snapshots</button>
+      </nav>
+
+      <!-- Status badges -->
+      <div class="flex items-center gap-3">
+        <span id="badge-dashboard" class="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-card border border-surface-border">
+          <span class="w-1.5 h-1.5 rounded-full bg-gray-500" id="dot-dashboard"></span>
+          <span class="hidden sm:inline">Dashboard</span>
+        </span>
+        <span id="badge-phone" class="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-card border border-surface-border">
+          <span class="w-1.5 h-1.5 rounded-full bg-gray-500" id="dot-phone"></span>
+          <span class="hidden sm:inline">Phone</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════ MAIN CONTENT ══════════════════════════ -->
+  <main class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+
+    <!-- ───────── LIVE STREAM TAB ───────── -->
+    <section id="view-livestream">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT PANEL: Pairing ─────────── -->
+        <aside class="lg:col-span-4 space-y-4">
+          <!-- Pairing card -->
+          <div class="bg-surface-card rounded-2xl border border-surface-border overflow-hidden">
+            <!-- WiFi / Cable tabs -->
+            <div class="flex border-b border-surface-border">
+              <button id="pair-tab-wifi" onclick="switchPairTab('wifi')" class="pair-tab flex-1 py-3 text-xs font-semibold text-center transition-gpu active">
+                <span class="inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01M4.93 11.684a9.967 9.967 0 0114.14 0M1.394 8.046a15.454 15.454 0 0121.212 0"/></svg>
+                  WiFi
+                </span>
+              </button>
+              <button id="pair-tab-cable" onclick="switchPairTab('cable')" class="pair-tab flex-1 py-3 text-xs font-semibold text-center transition-gpu">
+                <span class="inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+                  Cable
+                </span>
+              </button>
+            </div>
+
+            <!-- WiFi content -->
+            <div id="pair-wifi" class="p-5 space-y-4">
+              <!-- Network selector -->
+              <div>
+                <label class="block text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">Network Interface</label>
+                <select id="network-selector" onchange="updatePairing()" class="w-full bg-surface-base border border-surface-border rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-8">
+                </select>
+              </div>
+              <!-- QR Code -->
+              <div class="flex justify-center">
+                <div id="qr-container" class="bg-white rounded-xl p-3 shadow-lg">
+                  <img id="qr-code-img" src="" alt="QR Code" class="w-36 h-36" />
+                </div>
+              </div>
+              <!-- URL display -->
+              <div class="space-y-2">
+                <div class="bg-surface-base rounded-lg px-3 py-2.5 flex items-center justify-between border border-surface-border">
+                  <span id="connection-url" class="text-xs font-mono text-brand-teal truncate"></span>
+                  <button onclick="copyUrl()" class="ml-2 text-gray-500 hover:text-brand-purple transition-gpu" title="Copy URL">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                  </button>
+                </div>
+                <div class="bg-surface-base rounded-lg px-3 py-2.5 border border-surface-border">
+                  <span id="connection-ip" class="text-xs font-mono text-gray-400"></span>
+                </div>
+              </div>
+              <!-- Pairing PIN Display -->
+              <div class="flex items-center justify-between bg-surface-base border border-surface-border rounded-lg px-3 py-2.5">
+                <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Pairing PIN</span>
+                <span id="pairing-pin-display" class="text-sm font-bold font-mono text-brand-purple tracking-widest">{{ pairing_pin }}</span>
+              </div>
+              <!-- SSL Warning -->
+              <div class="flex items-start gap-2 text-[11px] text-yellow-500/80 bg-yellow-500/5 border border-yellow-500/10 rounded-lg px-3 py-2">
+                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Your browser may show a security warning for the self-signed SSL certificate. Click <strong>Advanced → Proceed</strong> to continue.</span>
+              </div>
+            </div>
+
+            <!-- Cable content -->
+            <div id="pair-cable" class="p-5 space-y-4 hidden">
+              <!-- ADB reverse -->
+              <div>
+                <h3 class="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                  <span class="w-5 h-5 rounded-full bg-brand-purple/20 text-brand-purple text-[10px] font-bold flex items-center justify-center">1</span>
+                  ADB Reverse (Recommended)
+                </h3>
+                <div class="bg-surface-base rounded-lg px-3 py-2.5 border border-surface-border">
+                  <code class="text-xs text-brand-teal font-mono">adb reverse tcp:{{ port }} tcp:{{ port }}</code>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-1.5">Run this command on your PC, then open <span class="text-brand-teal font-mono">https://localhost:{{ port }}</span> on your phone's browser.</p>
+              </div>
+              <!-- USB tethering -->
+              <div>
+                <h3 class="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                  <span class="w-5 h-5 rounded-full bg-brand-teal/20 text-brand-teal text-[10px] font-bold flex items-center justify-center">2</span>
+                  USB Tethering
+                </h3>
+                <ol class="text-[11px] text-gray-400 space-y-1 list-decimal list-inside ml-1">
+                  <li>Connect your phone via USB cable</li>
+                  <li>Enable <strong class="text-gray-300">USB Tethering</strong> in phone Settings → Network</li>
+                  <li>Open the connection URL in your phone's browser</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- RIGHT PANEL: Video Viewport ─────────── -->
+        <div class="lg:col-span-8 space-y-4">
+          <div id="viewport-container" class="viewport-container relative bg-surface-card rounded-2xl border border-surface-border overflow-hidden" style="min-height: 420px;">
+
+            <!-- Top overlay bar -->
+            <div class="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 py-2.5 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
+              <div class="flex items-center gap-3 pointer-events-auto">
+                <!-- Stream status -->
+                <span id="stream-status-badge" class="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-gray-800/80 text-gray-400 border border-gray-700/50">
+                  <span id="stream-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                  <span id="stream-label">Stream Offline</span>
+                </span>
+              </div>
+              <div class="flex items-center gap-2 pointer-events-auto">
+                <!-- Stats badges -->
+                <span id="stat-fps" class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-gray-800/80 text-gray-400 border border-gray-700/50 hidden">0 FPS</span>
+                <span id="stat-size" class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-gray-800/80 text-gray-400 border border-gray-700/50 hidden">0×0</span>
+                <span id="stat-latency" class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-gray-800/80 text-gray-400 border border-gray-700/50 hidden">0 ms</span>
+                <!-- REC indicator -->
+                <span id="rec-indicator" class="items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-red-900/60 text-red-400 border border-red-700/50 hidden">
+                  <span class="w-2 h-2 rounded-full bg-red-500 animate-rec-pulse inline-block"></span>
+                  REC <span id="rec-timer">00:00</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Video / Placeholder -->
+            <div class="relative flex items-center justify-center" style="min-height: 420px;" id="video-area">
+              <!-- Offline placeholder -->
+              <div id="offline-placeholder" class="flex flex-col items-center justify-center gap-4 text-gray-600">
+                <div class="w-20 h-20 rounded-full bg-surface-base border-2 border-surface-border flex items-center justify-center">
+                  <svg class="w-10 h-10 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
+                </div>
+                <div class="text-center">
+                  <p class="text-sm font-semibold text-gray-500">No Active Stream</p>
+                  <p class="text-xs text-gray-600 mt-1">Connect your phone &amp; tap Start Stream</p>
+                </div>
+              </div>
+              <!-- Live stream image -->
+              <img id="live-stream" class="absolute inset-0 w-full h-full object-contain hidden" alt="Live camera stream" />
+              <!-- Shutter Flash Overlay -->
+              <div id="shutter-flash" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-30"></div>
+            </div>
+
+            <!-- Bottom toolbar overlay -->
+            <div id="bottom-toolbar" class="absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black/70 to-transparent px-4 py-3">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <!-- Left controls -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <!-- Quality -->
+                  <div class="flex flex-col">
+                    <span id="bottom-toolbar-labels" class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5">Quality</span>
+                    <select id="ctrl-quality" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
+                      <option value="360p">360p</option>
+                      <option value="480p" selected>480p</option>
+                      <option value="720p">720p</option>
+                      <option value="1080p">1080p</option>
+                    </select>
+                  </div>
+                  <!-- FPS -->
+                  <div class="flex flex-col">
+                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">FPS</span>
+                    <select id="ctrl-fps" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
+                      <option value="10">10</option>
+                      <option value="15" selected>15</option>
+                      <option value="30">30</option>
+                      <option value="60">60</option>
+                    </select>
+                  </div>
+                  <!-- Camera -->
+                  <div class="flex flex-col">
+                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Camera</span>
+                    <select id="ctrl-camera" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer min-w-[80px]">
+                      <option value="">No cameras</option>
+                    </select>
+                  </div>
+                  <!-- Zoom Slider -->
+                  <div class="flex flex-col ml-3 mr-2">
+                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Zoom</span>
+                    <input type="range" id="ctrl-zoom" min="0.5" max="3" step="0.1" value="1" class="w-20 h-[5px] mt-1.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
+                  </div>
+                </div>
+                <!-- Right controls -->
+                <div class="flex items-center gap-2">
+                  <!-- Record btn -->
+                  <button id="btn-record" onclick="toggleRecording()" title="Record" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                    <svg id="rec-icon-idle" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+                    <svg id="rec-icon-active" class="w-4 h-4 text-red-500 animate-rec-pulse hidden" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+                  </button>
+                  <!-- Snapshot btn -->
+                  <button id="btn-snapshot" onclick="takeSnapshot()" title="Take Snapshot" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316A2.192 2.192 0 0 0 14.51 3.75h-5.02a2.192 2.192 0 0 0-1.84 1.008l-.822 1.317Z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                    </svg>
+                  </button>
+                  <!-- Fit Mode Toggle btn -->
+                  <button id="btn-fit-mode" onclick="toggleFitMode()" title="Toggle Fit/Fill" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+                    </svg>
+                  </button>
+                  <!-- Rotate btn -->
+                  <button id="btn-rotate" onclick="rotateVideo()" title="Rotate 90°" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" />
+                    </svg>
+                  </button>
+                  <!-- Fullscreen btn -->
+                  <button id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                    <svg id="fs-expand" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
+                    <svg id="fs-compress" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/></svg>
+                  </button>
+                  <!-- Switch camera btn -->
+                  <button id="btn-switch-camera" onclick="switchCamera()" title="Switch Camera" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                  </button>
+                  <!-- Start/Stop stream btn -->
+                  <button id="btn-stream" onclick="toggleStream()" class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-gpu bg-gradient-to-r from-brand-purple to-brand-teal text-white shadow-glow hover:shadow-teal hover:scale-[1.03] active:scale-95">
+                    <svg id="stream-icon-play" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+                    <svg id="stream-icon-stop" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>
+                    <span id="stream-btn-text">Start Stream</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- Step 1 -->
+            <div class="bg-surface-card rounded-xl border border-surface-border p-4 hover:border-brand-purple/30 transition-gpu group">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-brand-purple/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-purple/20 transition-gpu">
+                  <svg class="w-4 h-4 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-xs font-bold text-gray-300">Step 1</h3>
+                  <p class="text-[11px] text-gray-500 mt-0.5">Connect your device via WiFi or USB cable</p>
+                </div>
+              </div>
+            </div>
+            <!-- Step 2 -->
+            <div class="bg-surface-card rounded-xl border border-surface-border p-4 hover:border-brand-teal/30 transition-gpu group">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-brand-teal/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-teal/20 transition-gpu">
+                  <svg class="w-4 h-4 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-xs font-bold text-gray-300">Step 2</h3>
+                  <p class="text-[11px] text-gray-500 mt-0.5">Bypass security warning — accept the self-signed certificate</p>
+                </div>
+              </div>
+            </div>
+            <!-- Step 3 -->
+            <div class="bg-surface-card rounded-xl border border-surface-border p-4 hover:border-brand-purple/30 transition-gpu group">
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple/20 to-brand-teal/20 flex items-center justify-center flex-shrink-0 group-hover:from-brand-purple/30 group-hover:to-brand-teal/30 transition-gpu">
+                  <svg class="w-4 h-4 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+                </div>
+                <div>
+                  <h3 class="text-xs font-bold text-gray-300">Step 3</h3>
+                  <p class="text-[11px] text-gray-500 mt-0.5">Start streaming instantly — zero configuration needed</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── RECORDINGS TAB ───────── -->
+    <section id="view-recordings" class="hidden">
+      <div class="space-y-4">
+        <!-- Header row -->
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-gray-200 flex items-center gap-2">
+            <svg class="w-5 h-5 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-2.625 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0118 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-2.625 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h13.5c.621 0 1.125-.504 1.125-1.125m-14.625 0h14.625"/></svg>
+            Saved Recordings
+          </h2>
+          <button onclick="fetchRecordings()" class="flex items-center gap-1.5 text-xs font-semibold text-brand-purple hover:text-brand-teal transition-gpu px-3 py-1.5 rounded-lg bg-brand-purple/10 hover:bg-brand-purple/20">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            Refresh
+          </button>
+        </div>
+
+        <!-- Recordings grid -->
+        <div id="recordings-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Empty state -->
+        <div id="recordings-empty" class="hidden flex flex-col items-center justify-center py-16 text-gray-600">
+          <div class="w-16 h-16 rounded-full bg-surface-card border-2 border-surface-border flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-2.625 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0118 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-2.625 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h13.5c.621 0 1.125-.504 1.125-1.125m-14.625 0h14.625"/></svg>
+          </div>
+          <p class="text-sm font-semibold text-gray-500">No recordings yet</p>
+          <p class="text-xs text-gray-600 mt-1">Start a recording during a live stream</p>
+        </div>
+
+        <!-- Loading -->
+        <div id="recordings-loading" class="hidden flex justify-center py-16">
+          <div class="w-8 h-8 border-2 border-brand-purple/30 border-t-brand-purple rounded-full animate-spin"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── SNAPSHOTS TAB ───────── -->
+    <section id="view-snapshots" class="hidden">
+      <div class="space-y-4">
+        <!-- Header row -->
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-gray-200 flex items-center gap-2">
+            <svg class="w-5 h-5 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316A2.192 2.192 0 0 0 14.51 3.75h-5.02a2.192 2.192 0 0 0-1.84 1.008l-.822 1.317Z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+            </svg>
+            Saved Snapshots
+          </h2>
+          <button onclick="fetchSnapshots()" class="flex items-center gap-1.5 text-xs font-semibold text-brand-teal hover:text-brand-purple transition-gpu px-3 py-1.5 rounded-lg bg-brand-teal/10 hover:bg-brand-teal/20">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            Refresh
+          </button>
+        </div>
+
+        <!-- Snapshots grid -->
+        <div id="snapshots-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Empty state -->
+        <div id="snapshots-empty" class="hidden flex flex-col items-center justify-center py-16 text-gray-600">
+          <div class="w-16 h-16 rounded-full bg-surface-card border-2 border-surface-border flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316A2.192 2.192 0 0 0 14.51 3.75h-5.02a2.192 2.192 0 0 0-1.84 1.008l-.822 1.317Z"/></svg>
+          </div>
+          <p class="text-sm font-semibold text-gray-500">No snapshots yet</p>
+          <p class="text-xs text-gray-600 mt-1">Click the camera button during a live stream to take a snapshot</p>
+        </div>
+
+        <!-- Loading -->
+        <div id="snapshots-loading" class="hidden flex justify-center py-16">
+          <div class="w-8 h-8 border-2 border-brand-teal/30 border-t-brand-teal rounded-full animate-spin"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-[110] flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ══════════════════════════ MEDIA PLAYER MODAL ══════════════════════════ -->
+  <div id="media-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden" style="background: rgba(0,0,0,.9); backdrop-filter: blur(8px);">
+    <div class="relative w-full max-w-4xl mx-4">
+      <button id="media-modal-close" onclick="closeMediaModal()" class="absolute -top-10 right-0 w-8 h-8 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center text-gray-400 hover:text-white transition-gpu">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <video id="media-video-player" controls class="w-full rounded-xl bg-black shadow-2xl hidden" controlslist="nodownload"></video>
+      <img id="media-image-display" class="w-full max-h-[80vh] rounded-xl bg-black shadow-2xl object-contain hidden" alt="Snapshot view" />
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ DELETE CONFIRM MODAL ══════════════════════════ -->
+  <div id="delete-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden" style="background: rgba(0,0,0,.8);">
+    <div class="bg-surface-card rounded-2xl border border-surface-border p-6 max-w-sm w-full mx-4 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+          <svg class="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+        </div>
+        <div>
+          <h3 class="text-sm font-bold text-gray-200">Delete Recording</h3>
+          <p class="text-xs text-gray-500 mt-0.5">This action cannot be undone.</p>
+        </div>
+      </div>
+      <p id="delete-filename" class="text-xs text-gray-400 bg-surface-base rounded-lg px-3 py-2 font-mono border border-surface-border truncate"></p>
+      <div class="flex items-center gap-3 justify-end">
+        <button onclick="closeDeleteModal()" class="px-4 py-2 text-xs font-semibold text-gray-400 rounded-lg hover:bg-surface-base transition-gpu">Cancel</button>
+        <button id="btn-confirm-delete" class="px-4 py-2 text-xs font-bold text-white rounded-lg bg-red-600 hover:bg-red-500 transition-gpu">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ SCRIPTS ══════════════════════════ -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script>
+    // ────────────────────── State ──────────────────────
+    let isStreaming = false;
+    let isRecording = false;
+    let currentZoom = 1;
+    let currentTab = 'livestream';
+    let currentPairTab = 'wifi';
+    let recTimerInterval = null;
+    let recSeconds = 0;
+    let deleteTarget = null;
+
+    // Frame handling state
+    let frameCount = 0;
+    let fpsDisplay = 0;
+    let lastFpsUpdate = Date.now();
+    let minOffset = Infinity;
+    let prevBlobUrl = null;
+
+    // Connection data from Flask
+    const connections = {{ connections | tojson }};
+    const serverPort = {{ port }};
+
+    // ────────────────────── Socket.IO ──────────────────────
+    const socket = io({ secure: true, rejectUnauthorized: false });
+
+    socket.on('connect', () => {
+      socket.emit('join', { client_type: 'dashboard' });
+    });
+
+    // ────────────────────── Status Update Handler ──────────────────────
+    socket.on('status_update', (data) => {
+      // Dashboard badge
+      const dotDash = document.getElementById('dot-dashboard');
+      dotDash.className = 'w-1.5 h-1.5 rounded-full ' + (data.dashboard_connected ? 'bg-emerald-400 animate-pulse-dot' : 'bg-gray-500');
+
+      // Phone badge
+      const dotPhone = document.getElementById('dot-phone');
+      dotPhone.className = 'w-1.5 h-1.5 rounded-full ' + (data.mobile_connected ? 'bg-emerald-400 animate-pulse-dot' : 'bg-gray-500');
+
+      // Stream state
+      isStreaming = data.is_streaming;
+      updateStreamUI();
+
+      // Quality sync
+      if (data.quality) {
+        document.getElementById('ctrl-quality').value = data.quality;
+      }
+
+      // FPS sync
+      if (data.fps) {
+        document.getElementById('ctrl-fps').value = String(data.fps);
+      }
+
+      // Camera list
+      if (data.cameras && data.cameras.length > 0) {
+        const sel = document.getElementById('ctrl-camera');
+        const currentVal = sel.value;
+        sel.innerHTML = '';
+        data.cameras.forEach(cam => {
+          const opt = document.createElement('option');
+          opt.value = cam.id;
+          opt.textContent = cam.label || cam.id;
+          sel.appendChild(opt);
+        });
+        if (data.active_camera) {
+          sel.value = data.active_camera;
+        }
+      }
+
+      // Recording state
+      isRecording = data.is_recording;
+      updateRecordingUI();
+    });
+
+    socket.on('snapshot_saved', (data) => {
+      if (data.status === 'success') {
+        showToast('Snapshot saved to server!', 'success');
+        if (currentTab === 'snapshots') {
+          fetchSnapshots();
+        }
+      } else {
+        showToast('Failed to save snapshot to server', 'error');
+      }
+    });
+
+    // ────────────────────── Video Frame Handler ──────────────────────
+    socket.on('video_frame', (data) => {
+      if (!data.image || !data.timestamp) return;
+
+      const now = Date.now();
+      const offset = now - data.timestamp;
+      if (offset < minOffset) minOffset = offset;
+
+      const relativeLatency = offset - minOffset;
+
+      // Update latency badge
+      const latBadge = document.getElementById('stat-latency');
+      latBadge.textContent = relativeLatency + ' ms';
+      latBadge.classList.remove('hidden');
+
+      // Drop stale frames
+      if (relativeLatency > 200) return;
+
+      // Convert ArrayBuffer to Blob URL
+      const blob = new Blob([data.image], { type: 'image/jpeg' });
+      const url = URL.createObjectURL(blob);
+      const img = document.getElementById('live-stream');
+
+      img.onload = () => {
+        // Show size badge
+        const sizeBadge = document.getElementById('stat-size');
+        sizeBadge.textContent = img.naturalWidth + '×' + img.naturalHeight;
+        sizeBadge.classList.remove('hidden');
+      };
+
+      img.src = url;
+      if (img.classList.contains('hidden')) {
+        img.classList.remove('hidden');
+        document.getElementById('offline-placeholder').classList.add('hidden');
+        updateVideoStyles();
+      }
+
+      // Revoke previous blob URL
+      if (prevBlobUrl) URL.revokeObjectURL(prevBlobUrl);
+      prevBlobUrl = url;
+
+      // FPS counter
+      frameCount++;
+      if (now - lastFpsUpdate >= 1000) {
+        fpsDisplay = frameCount;
+        frameCount = 0;
+        lastFpsUpdate = now;
+        const fpsBadge = document.getElementById('stat-fps');
+        fpsBadge.textContent = fpsDisplay + ' FPS';
+        fpsBadge.classList.remove('hidden');
+      }
+    });
+
+    // ────────────────────── Recording Status Handler ──────────────────────
+    socket.on('recording_status', (data) => {
+      isRecording = data.is_recording;
+      updateRecordingUI();
+    });
+
+    // ────────────────────── Tab Switching ──────────────────────
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+
+      document.getElementById('view-livestream').classList.toggle('hidden', tab !== 'livestream');
+      document.getElementById('view-recordings').classList.toggle('hidden', tab !== 'recordings');
+      document.getElementById('view-snapshots').classList.toggle('hidden', tab !== 'snapshots');
+
+      if (tab === 'recordings') fetchRecordings();
+      if (tab === 'snapshots') fetchSnapshots();
+    }
+
+    // Tab button active styling
+    const tabStyle = document.createElement('style');
+    tabStyle.textContent = `
+      .tab-btn { color: #6b7280; }
+      .tab-btn.active { background: linear-gradient(135deg, #6366f1, #14b8a6); color: #fff; box-shadow: 0 0 12px rgba(99,102,241,.3); }
+      .tab-btn:hover:not(.active) { color: #9ca3af; background: rgba(255,255,255,.03); }
+      .pair-tab { color: #6b7280; border-bottom: 2px solid transparent; }
+      .pair-tab.active { color: #e5e7eb; border-bottom-color: #6366f1; }
+      .pair-tab:hover:not(.active) { color: #9ca3af; }
+    `;
+    document.head.appendChild(tabStyle);
+
+    function switchPairTab(tab) {
+      currentPairTab = tab;
+      document.querySelectorAll('.pair-tab').forEach(b => b.classList.remove('active'));
+      document.getElementById('pair-tab-' + tab).classList.add('active');
+      document.getElementById('pair-wifi').classList.toggle('hidden', tab !== 'wifi');
+      document.getElementById('pair-cable').classList.toggle('hidden', tab !== 'cable');
+    }
+
+    // ────────────────────── Pairing / Connection ──────────────────────
+    function initPairing() {
+      const sel = document.getElementById('network-selector');
+      sel.innerHTML = '';
+      connections.forEach((conn, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = conn.ip;
+        sel.appendChild(opt);
+      });
+      updatePairing();
+    }
+
+    function updatePairing() {
+      const idx = document.getElementById('network-selector').value;
+      const conn = connections[idx];
+      if (!conn) return;
+      document.getElementById('qr-code-img').src = conn.qr_code;
+      document.getElementById('connection-url').textContent = conn.url;
+      document.getElementById('connection-ip').textContent = conn.ip + ':' + serverPort;
+    }
+
+    function copyUrl() {
+      const url = document.getElementById('connection-url').textContent;
+      navigator.clipboard.writeText(url).then(() => {
+        // Brief visual feedback
+        const btn = event.currentTarget;
+        btn.classList.add('text-brand-teal');
+        setTimeout(() => btn.classList.remove('text-brand-teal'), 1200);
+      }).catch(() => {});
+    }
+
+    // ────────────────────── Stream Controls ──────────────────────
+    function toggleStream() {
+      socket.emit('toggle_stream_request', { start: !isStreaming });
+    }
+
+    function updateStreamUI() {
+      const badge = document.getElementById('stream-status-badge');
+      const dot = document.getElementById('stream-dot');
+      const label = document.getElementById('stream-label');
+      const btnText = document.getElementById('stream-btn-text');
+      const playIcon = document.getElementById('stream-icon-play');
+      const stopIcon = document.getElementById('stream-icon-stop');
+
+      if (isStreaming) {
+        badge.className = 'flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-900/60 text-emerald-400 border border-emerald-700/50';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-dot';
+        label.textContent = 'LIVE STREAMING';
+        btnText.textContent = 'Stop Stream';
+        playIcon.classList.add('hidden');
+        stopIcon.classList.remove('hidden');
+      } else {
+        badge.className = 'flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-gray-800/80 text-gray-400 border border-gray-700/50';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-gray-500';
+        label.textContent = 'Stream Offline';
+        btnText.textContent = 'Start Stream';
+        playIcon.classList.remove('hidden');
+        stopIcon.classList.add('hidden');
+
+        // Reset stats when stream goes offline
+        document.getElementById('stat-fps').classList.add('hidden');
+        document.getElementById('stat-size').classList.add('hidden');
+        document.getElementById('stat-latency').classList.add('hidden');
+        document.getElementById('live-stream').classList.add('hidden');
+        document.getElementById('offline-placeholder').classList.remove('hidden');
+        frameCount = 0;
+        fpsDisplay = 0;
+        minOffset = Infinity;
+      }
+    }
+
+    // ────────────────────── Camera / Quality / FPS Controls ──────────────────────
+    document.getElementById('ctrl-quality').addEventListener('change', (e) => {
+      socket.emit('set_quality', { quality: e.target.value });
+    });
+
+    document.getElementById('ctrl-fps').addEventListener('change', (e) => {
+      socket.emit('set_fps', { fps: parseInt(e.target.value) });
+    });
+
+    document.getElementById('ctrl-camera').addEventListener('change', (e) => {
+      socket.emit('select_camera_request', { device_id: e.target.value });
+    });
+
+    function switchCamera() {
+      socket.emit('switch_camera_request', {});
+    }
+
+    // ────────────────────── Recording Controls ──────────────────────
+    function toggleRecording() {
+      if (isRecording) {
+        socket.emit('stop_recording', {});
+      } else {
+        socket.emit('start_recording', {});
+      }
+    }
+
+    function updateRecordingUI() {
+      const recIndicator = document.getElementById('rec-indicator');
+      const idleIcon = document.getElementById('rec-icon-idle');
+      const activeIcon = document.getElementById('rec-icon-active');
+      const btn = document.getElementById('btn-record');
+
+      if (isRecording) {
+        recIndicator.classList.remove('hidden');
+        recIndicator.classList.add('flex');
+        idleIcon.classList.add('hidden');
+        activeIcon.classList.remove('hidden');
+        btn.classList.add('ring-2', 'ring-red-500/50');
+        startRecTimer();
+      } else {
+        recIndicator.classList.add('hidden');
+        recIndicator.classList.remove('flex');
+        idleIcon.classList.remove('hidden');
+        activeIcon.classList.add('hidden');
+        btn.classList.remove('ring-2', 'ring-red-500/50');
+        stopRecTimer();
+      }
+    }
+
+    function startRecTimer() {
+      if (recTimerInterval) return;
+      recSeconds = 0;
+      updateRecTimerDisplay();
+      recTimerInterval = setInterval(() => {
+        recSeconds++;
+        updateRecTimerDisplay();
+      }, 1000);
+    }
+
+    function stopRecTimer() {
+      if (recTimerInterval) {
+        clearInterval(recTimerInterval);
+        recTimerInterval = null;
+      }
+      recSeconds = 0;
+      updateRecTimerDisplay();
+    }
+
+    function updateRecTimerDisplay() {
+      const m = String(Math.floor(recSeconds / 60)).padStart(2, '0');
+      const s = String(recSeconds % 60).padStart(2, '0');
+      document.getElementById('rec-timer').textContent = m + ':' + s;
+    }
+
+    // ────────────────────── Fullscreen ──────────────────────
+    function toggleFullscreen() {
+      const container = document.getElementById('viewport-container');
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      const isFs = !!document.fullscreenElement;
+      document.getElementById('fs-expand').classList.toggle('hidden', isFs);
+      document.getElementById('fs-compress').classList.toggle('hidden', !isFs);
+      // Hide toolbar labels in fullscreen
+      document.querySelectorAll('.toolbar-label').forEach(el => el.classList.toggle('hidden', isFs));
+      const mainLabel = document.getElementById('bottom-toolbar-labels');
+      if (mainLabel) mainLabel.classList.toggle('hidden', isFs);
+      updateVideoStyles();
+    });
+
+    // ────────────────────── Recordings Tab ──────────────────────
+    async function fetchRecordings() {
+      const grid = document.getElementById('recordings-grid');
+      const empty = document.getElementById('recordings-empty');
+      const loading = document.getElementById('recordings-loading');
+
+      grid.innerHTML = '';
+      empty.classList.add('hidden');
+      loading.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/recordings');
+        const recordings = await res.json();
+        loading.classList.add('hidden');
+
+        if (!recordings || recordings.length === 0) {
+          empty.classList.remove('hidden');
+          return;
+        }
+
+        recordings.forEach(rec => {
+          grid.appendChild(createRecordingCard(rec));
+        });
+      } catch (err) {
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+        console.error('Failed to fetch recordings:', err);
+      }
+    }
+
+    function createRecordingCard(rec) {
+      const card = document.createElement('div');
+      card.className = 'bg-surface-card rounded-xl border border-surface-border p-4 hover:border-brand-purple/30 transition-gpu group';
+
+      const sizeStr = formatFileSize(rec.size);
+      const durStr = formatDuration(rec.duration);
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-lg bg-brand-purple/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-purple/20 transition-gpu">
+              <svg class="w-4 h-4 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs font-semibold text-gray-300 truncate">${rec.filename}</p>
+              <p class="text-[10px] text-gray-500 mt-0.5">${rec.date}</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 text-[10px] text-gray-500 mb-3">
+          <span class="flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            ${durStr}
+          </span>
+          <span class="flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+            ${sizeStr}
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="playRecording('${rec.date}','${rec.filename}')" class="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-brand-purple bg-brand-purple/10 hover:bg-brand-purple/20 rounded-lg py-2 transition-gpu">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+            Play
+          </button>
+          <a href="/api/recordings/${rec.date}/${rec.filename}" download class="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-brand-teal bg-brand-teal/10 hover:bg-brand-teal/20 rounded-lg py-2 transition-gpu">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            Download
+          </a>
+          <button onclick="confirmDelete('${rec.date}','${rec.filename}', 'recording')" class="w-9 h-9 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-gpu flex-shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+          </button>
+        </div>
+      `;
+      return card;
+    }
+
+    // ────────────────────── Snapshots Tab ──────────────────────
+    async function fetchSnapshots() {
+      const grid = document.getElementById('snapshots-grid');
+      const empty = document.getElementById('snapshots-empty');
+      const loading = document.getElementById('snapshots-loading');
+
+      grid.innerHTML = '';
+      empty.classList.add('hidden');
+      loading.classList.remove('hidden');
+
+      try {
+        const res = await fetch('/api/snapshots');
+        const snapshots = await res.json();
+        loading.classList.add('hidden');
+
+        if (!snapshots || snapshots.length === 0) {
+          empty.classList.remove('hidden');
+          return;
+        }
+
+        snapshots.forEach(snap => {
+          grid.appendChild(createSnapshotCard(snap));
+        });
+      } catch (err) {
+        loading.classList.add('hidden');
+        empty.classList.remove('hidden');
+        console.error('Failed to fetch snapshots:', err);
+      }
+    }
+
+    function createSnapshotCard(snap) {
+      const card = document.createElement('div');
+      card.className = 'bg-surface-card rounded-xl border border-surface-border p-4 hover:border-brand-teal/30 transition-gpu group';
+
+      const sizeStr = formatFileSize(snap.size);
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-lg bg-brand-teal/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-teal/20 transition-gpu">
+              <svg class="w-4 h-4 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316A2.192 2.192 0 0 0 14.51 3.75h-5.02a2.192 2.192 0 0 0-1.84 1.008l-.822 1.317Z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+              </svg>
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs font-semibold text-gray-300 truncate">${snap.filename}</p>
+              <p class="text-[10px] text-gray-500 mt-0.5">${snap.date}</p>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 text-[10px] text-gray-500 mb-3">
+          <span class="flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+            ${sizeStr}
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="viewSnapshot('${snap.date}','${snap.filename}')" class="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-brand-teal bg-brand-teal/10 hover:bg-brand-teal/20 rounded-lg py-2 transition-gpu">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            View
+          </button>
+          <a href="/api/snapshots/${snap.date}/${snap.filename}" download class="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-brand-purple bg-brand-purple/10 hover:bg-brand-purple/20 rounded-lg py-2 transition-gpu">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            Download
+          </a>
+          <button onclick="confirmDelete('${snap.date}','${snap.filename}', 'snapshot')" class="w-9 h-9 flex items-center justify-center rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-gpu flex-shrink-0">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+          </button>
+        </div>
+      `;
+      return card;
+    }
+
+    // ────────────────────── Video Custom Styles (Rotation & Aspect Fit/Fill) ──────────────────────
+    let rotation = 0; // 0, 90, 180, 270
+    let fitMode = 'contain'; // 'contain', 'cover'
+
+    function toggleFitMode() {
+      fitMode = fitMode === 'contain' ? 'cover' : 'contain';
+      updateVideoStyles();
+      showToast(`Fit mode: ${fitMode === 'contain' ? 'Fit (Contain)' : 'Fill (Cover)'}`, 'info');
+    }
+
+    function rotateVideo() {
+      rotation = (rotation + 90) % 360;
+      updateVideoStyles();
+      showToast(`Rotation: ${rotation}°`, 'info');
+    }
+
+    function updateVideoStyles() {
+      const img = document.getElementById('live-stream');
+      if (!img) return;
+
+      // Reset style constraints
+      img.style.transform = '';
+      img.style.width = '';
+      img.style.height = '';
+      img.style.maxWidth = '';
+      img.style.maxHeight = '';
+      
+      let baseTransform = '';
+
+      if (rotation === 0) {
+        img.className = "absolute inset-0 w-full h-full object-" + fitMode;
+        if (document.fullscreenElement) {
+          img.style.maxWidth = '100vw';
+          img.style.maxHeight = '100vh';
+        }
+      } else if (rotation === 180) {
+        img.className = "absolute inset-0 w-full h-full object-" + fitMode;
+        baseTransform = 'rotate(180deg) ';
+        if (document.fullscreenElement) {
+          img.style.maxWidth = '100vw';
+          img.style.maxHeight = '100vh';
+        }
+      } else if (rotation === 90 || rotation === 270) {
+        const container = document.getElementById('video-area');
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+
+        img.style.width = containerHeight + 'px';
+        img.style.height = containerWidth + 'px';
+        baseTransform = `rotate(${rotation}deg) `;
+        img.className = "absolute object-" + fitMode;
+      }
+
+      if (currentZoom !== 1 || baseTransform) {
+        img.style.transform = baseTransform + (currentZoom !== 1 ? `scale(${currentZoom})` : '');
+      }
+    }
+
+    // Call updateVideoStyles on window resize
+    window.addEventListener('resize', updateVideoStyles);
+
+    // ────────────────────── Take Snapshot ──────────────────────
+    function takeSnapshot() {
+      if (!isStreaming) {
+        showToast('Cannot take snapshot: Stream is offline', 'error');
+        return;
+      }
+
+      const img = document.getElementById('live-stream');
+      if (img.classList.contains('hidden')) {
+        showToast('No active video feed', 'error');
+        return;
+      }
+
+      // Create a canvas to grab the current image frame
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+
+      // Swap canvas dimensions if rotated 90 or 270 degrees
+      if (rotation === 90 || rotation === 270) {
+        canvas.width = height;
+        canvas.height = width;
+      } else {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      // Rotate canvas drawing coordinates around the center
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.drawImage(img, -width / 2, -height / 2, width, height);
+
+      // Convert to blob
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          showToast('Failed to capture frame', 'error');
+          return;
+        }
+
+        // 1. Direct browser download for instant feedback
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `snapshot-${Date.now()}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // 2. Upload snapshot to server via SocketIO
+        socket.emit('save_snapshot', {
+          image: blob,
+          timestamp: Date.now()
+        });
+
+        // Visual feedback (white flash)
+        showCameraFlash();
+        showToast('Capturing snapshot...', 'info');
+      }, 'image/jpeg', 0.95);
+    }
+
+    function showCameraFlash() {
+      const flash = document.getElementById('shutter-flash');
+      if (!flash) return;
+      flash.classList.remove('opacity-0');
+      flash.classList.add('opacity-100');
+      setTimeout(() => {
+        flash.classList.remove('opacity-100');
+        flash.classList.add('opacity-0');
+      }, 150);
+    }
+
+    document.getElementById('ctrl-zoom').addEventListener('input', (e) => {
+      currentZoom = parseFloat(e.target.value);
+      updateVideoStyles();
+    });
+
+    // ────────────────────── Glassmorphic Toast Notification ──────────────────────
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = 'px-4 py-2.5 rounded-xl border text-xs font-semibold shadow-lg backdrop-blur-md transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2';
+
+      if (type === 'success') {
+        toast.className += ' bg-emerald-950/80 border-emerald-500/30 text-emerald-400';
+      } else if (type === 'error') {
+        toast.className += ' bg-red-950/80 border-red-500/30 text-red-400';
+      } else {
+        toast.className += ' bg-gray-900/80 border-gray-700/50 text-gray-300';
+      }
+
+      // Add SVG icons
+      let icon = '';
+      if (type === 'success') {
+        icon = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>`;
+      } else if (type === 'error') {
+        icon = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`;
+      } else {
+        icon = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+      }
+
+      toast.innerHTML = `${icon}<span>${message}</span>`;
+      container.appendChild(toast);
+
+      // Animate in
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      // Animate out & remove
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 3000);
+    }
+
+    // ────────────────────── Media Modal ──────────────────────
+    function playRecording(date, filename) {
+      const player = document.getElementById('media-video-player');
+      const display = document.getElementById('media-image-display');
+
+      display.classList.add('hidden');
+      display.src = '';
+
+      player.src = '/api/recordings/' + date + '/' + filename;
+      player.classList.remove('hidden');
+
+      document.getElementById('media-modal').classList.remove('hidden');
+      player.play().catch(() => {});
+    }
+
+    function viewSnapshot(date, filename) {
+      const player = document.getElementById('media-video-player');
+      const display = document.getElementById('media-image-display');
+
+      player.classList.add('hidden');
+      player.pause();
+      player.src = '';
+
+      display.src = '/api/snapshots/' + date + '/' + filename;
+      display.classList.remove('hidden');
+
+      document.getElementById('media-modal').classList.remove('hidden');
+    }
+
+    function closeMediaModal() {
+      const player = document.getElementById('media-video-player');
+      const display = document.getElementById('media-image-display');
+      player.pause();
+      player.src = '';
+      display.src = '';
+      document.getElementById('media-modal').classList.add('hidden');
+    }
+
+    // Close on escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!document.getElementById('media-modal').classList.contains('hidden')) closeMediaModal();
+        if (!document.getElementById('delete-modal').classList.contains('hidden')) closeDeleteModal();
+      }
+    });
+
+    // ────────────────────── Delete Modal ──────────────────────
+    let deleteType = 'recording';
+
+    function confirmDelete(date, filename, type = 'recording') {
+      deleteTarget = { date, filename };
+      deleteType = type;
+      document.getElementById('delete-filename').textContent = filename;
+      document.getElementById('delete-modal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      deleteTarget = null;
+      document.getElementById('delete-modal').classList.add('hidden');
+    }
+
+    document.getElementById('btn-confirm-delete').addEventListener('click', async () => {
+      if (!deleteTarget) return;
+      const { date, filename } = deleteTarget;
+      const url = deleteType === 'recording'
+        ? '/api/recordings/' + date + '/' + filename
+        : '/api/snapshots/' + date + '/' + filename;
+
+      try {
+        const res = await fetch(url, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.status === 'deleted') {
+          showToast(`${deleteType === 'recording' ? 'Recording' : 'Snapshot'} deleted successfully`, 'success');
+          if (deleteType === 'recording') {
+            fetchRecordings();
+          } else {
+            fetchSnapshots();
+          }
+        }
+      } catch (e) {
+        console.error('Delete failed:', e);
+        showToast('Failed to delete item', 'error');
+      }
+      closeDeleteModal();
+    });
+
+    // ────────────────────── Helpers ──────────────────────
+    function formatFileSize(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
+    }
+
+    function formatDuration(seconds) {
+      if (!seconds || seconds === 0) return '0:00';
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return m + ':' + String(s).padStart(2, '0');
+    }
+
+    // ────────────────────── Init ──────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      initPairing();
+      updateStreamUI();
+      updateRecordingUI();
+    });
+  </script>
+</body>
+</html>
