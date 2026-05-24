@@ -50,7 +50,7 @@
 
     /* Fullscreen tweaks */
     #viewport-container:fullscreen { background: #000; }
-    #viewport-container:fullscreen #bottom-toolbar-labels { display: none; }
+    #viewport-container:fullscreen #top-toolbar-labels { display: none; }
     /* Removed forced object-fit: contain to allow fit/fill toggle */
 
     /* Glass panel */
@@ -195,6 +195,102 @@
 
         <!-- RIGHT PANEL: Video Viewport ─────────── -->
         <div class="lg:col-span-8 space-y-4">
+          <!-- Top Control Toolbar -->
+          <div id="top-toolbar" class="bg-surface-card rounded-2xl border border-surface-border px-5 py-3 shadow-sm">
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <!-- Left controls -->
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- Quality -->
+                <div class="flex flex-col">
+                  <span id="top-toolbar-labels" class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5">Quality</span>
+                  <select id="ctrl-quality" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
+                    <option value="360p">360p</option>
+                    <option value="480p" selected>480p</option>
+                    <option value="720p">720p</option>
+                    <option value="1080p">1080p</option>
+                  </select>
+                </div>
+                <!-- FPS -->
+                <div class="flex flex-col">
+                  <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">FPS</span>
+                  <select id="ctrl-fps" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
+                    <option value="10">10</option>
+                    <option value="15" selected>15</option>
+                    <option value="30">30</option>
+                    <option value="60">60</option>
+                  </select>
+                </div>
+                <!-- Camera -->
+                <div class="flex flex-col">
+                  <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Camera</span>
+                  <select id="ctrl-camera" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer min-w-[80px]">
+                    <option value="">No cameras</option>
+                  </select>
+                </div>
+                <!-- Hardware Zoom Slider -->
+                <div id="hw-zoom-container" class="hidden flex-col ml-3">
+                  <div class="flex justify-between items-center mb-0.5">
+                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold toolbar-label">Zoom</span>
+                    <span id="hw-zoom-value" class="text-[9px] font-mono text-gray-400">1.0x</span>
+                  </div>
+                  <input type="range" id="hw-zoom" step="0.1" value="1" class="w-20 h-[5px] mt-0.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
+                </div>
+                <!-- Hardware Focus Mode -->
+                <div id="hw-focus-container" class="hidden flex-col ml-2">
+                  <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Focus</span>
+                  <select id="hw-focus" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
+                  </select>
+                </div>
+                <!-- Hardware Exposure -->
+                <div id="hw-exposure-container" class="hidden flex-col ml-2 mr-2">
+                  <div class="flex justify-between items-center mb-0.5">
+                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold toolbar-label">Exposure</span>
+                    <span id="hw-exposure-value" class="text-[9px] font-mono text-gray-400">0.0</span>
+                  </div>
+                  <input type="range" id="hw-exposure" step="0.1" value="0" class="w-20 h-[5px] mt-0.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
+                </div>
+                <!-- Hardware Torch -->
+                <div id="hw-torch-container" class="hidden flex-col ml-2 mr-2">
+                  <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Flash</span>
+                  <button id="hw-torch" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-3 py-1 focus:outline-none hover:bg-gray-700/80 transition-colors active:scale-95">
+                    Toggle
+                  </button>
+                </div>
+              </div>
+              <!-- Right controls -->
+              <div class="flex items-center gap-2">
+                <!-- Record btn -->
+                <button id="btn-record" onclick="toggleRecording()" title="Record" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                  <svg id="rec-icon-idle" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+                  <svg id="rec-icon-active" class="w-4 h-4 text-red-500 animate-rec-pulse hidden" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+                </button>
+                <!-- Snapshot btn -->
+                <button id="btn-snapshot" onclick="takeSnapshot()" title="Take Snapshot" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                  <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316A2.192 2.192 0 0 0 14.51 3.75h-5.02a2.192 2.192 0 0 0-1.84 1.008l-.822 1.317Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                  </svg>
+                </button>
+                <!-- Fit Mode Toggle btn -->
+                <button id="btn-fit-mode" onclick="toggleFitMode()" title="Toggle Fit/Fill" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                  <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+                  </svg>
+                </button>
+                <!-- Rotate btn -->
+                <button id="btn-rotate" onclick="rotateVideo()" title="Rotate 90°" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                  <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" />
+                  </svg>
+                </button>
+                <!-- Fullscreen btn -->
+                <button id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
+                  <svg id="fs-expand" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
+                  <svg id="fs-compress" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
           <div id="viewport-container" class="viewport-container relative bg-surface-card rounded-2xl border border-surface-border overflow-hidden" style="min-height: 420px;">
 
             <!-- Top overlay bar -->
@@ -227,122 +323,6 @@
                   <svg class="w-10 h-10 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
                 </div>
                 <div class="text-center">
-                  <p class="text-sm font-semibold text-gray-500">No Active Stream</p>
-                  <p class="text-xs text-gray-600 mt-1">Connect your phone &amp; tap Start Stream</p>
-                </div>
-              </div>
-              <!-- Live stream image -->
-              <img id="live-stream" class="absolute inset-0 w-full h-full object-contain hidden" alt="Live camera stream" />
-              <!-- Shutter Flash Overlay -->
-              <div id="shutter-flash" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-30"></div>
-            </div>
-
-            <!-- Bottom toolbar overlay -->
-            <div id="bottom-toolbar" class="absolute bottom-0 inset-x-0 z-20 bg-gradient-to-t from-black/70 to-transparent px-4 py-3">
-              <div class="flex items-center justify-between gap-3 flex-wrap">
-                <!-- Left controls -->
-                <div class="flex items-center gap-2 flex-wrap">
-                  <!-- Quality -->
-                  <div class="flex flex-col">
-                    <span id="bottom-toolbar-labels" class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5">Quality</span>
-                    <select id="ctrl-quality" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
-                      <option value="360p">360p</option>
-                      <option value="480p" selected>480p</option>
-                      <option value="720p">720p</option>
-                      <option value="1080p">1080p</option>
-                    </select>
-                  </div>
-                  <!-- FPS -->
-                  <div class="flex flex-col">
-                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">FPS</span>
-                    <select id="ctrl-fps" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
-                      <option value="10">10</option>
-                      <option value="15" selected>15</option>
-                      <option value="30">30</option>
-                      <option value="60">60</option>
-                    </select>
-                  </div>
-                  <!-- Camera -->
-                  <div class="flex flex-col">
-                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Camera</span>
-                    <select id="ctrl-camera" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer min-w-[80px]">
-                      <option value="">No cameras</option>
-                    </select>
-                  </div>
-                  <!-- Hardware Zoom Slider -->
-                  <div id="hw-zoom-container" class="hidden flex-col ml-3">
-                    <div class="flex justify-between items-center mb-0.5">
-                      <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold toolbar-label">Zoom</span>
-                      <span id="hw-zoom-value" class="text-[9px] font-mono text-gray-400">1.0x</span>
-                    </div>
-                    <input type="range" id="hw-zoom" step="0.1" value="1" class="w-20 h-[5px] mt-0.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
-                  </div>
-                  <!-- Hardware Focus Mode -->
-                  <div id="hw-focus-container" class="hidden flex-col ml-2">
-                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Focus</span>
-                    <select id="hw-focus" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
-                    </select>
-                  </div>
-                  <!-- Hardware Exposure -->
-                  <div id="hw-exposure-container" class="hidden flex-col ml-2 mr-2">
-                    <div class="flex justify-between items-center mb-0.5">
-                      <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold toolbar-label">Exposure</span>
-                      <span id="hw-exposure-value" class="text-[9px] font-mono text-gray-400">0.0</span>
-                    </div>
-                    <input type="range" id="hw-exposure" step="0.1" value="0" class="w-20 h-[5px] mt-0.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
-                  </div>
-                  <!-- Hardware Torch -->
-                  <div id="hw-torch-container" class="hidden flex-col ml-2 mr-2">
-                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Flash</span>
-                    <button id="hw-torch" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-3 py-1 focus:outline-none hover:bg-gray-700/80 transition-colors active:scale-95">
-                      Toggle
-                    </button>
-                  </div>
-                </div>
-                <!-- Right controls -->
-                <div class="flex items-center gap-2">
-                  <!-- Record btn -->
-                  <button id="btn-record" onclick="toggleRecording()" title="Record" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                    <svg id="rec-icon-idle" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
-                    <svg id="rec-icon-active" class="w-4 h-4 text-red-500 animate-rec-pulse hidden" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
-                  </button>
-                  <!-- Snapshot btn -->
-                  <button id="btn-snapshot" onclick="takeSnapshot()" title="Take Snapshot" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                    <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316A2.192 2.192 0 0 0 14.51 3.75h-5.02a2.192 2.192 0 0 0-1.84 1.008l-.822 1.317Z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-                    </svg>
-                  </button>
-                  <!-- Fit Mode Toggle btn -->
-                  <button id="btn-fit-mode" onclick="toggleFitMode()" title="Toggle Fit/Fill" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                    <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
-                    </svg>
-                  </button>
-                  <!-- Rotate btn -->
-                  <button id="btn-rotate" onclick="rotateVideo()" title="Rotate 90°" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                    <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" />
-                    </svg>
-                  </button>
-                  <!-- Fullscreen btn -->
-                  <button id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                    <svg id="fs-expand" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
-                    <svg id="fs-compress" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/></svg>
-                  </button>
-                  <!-- Switch camera btn -->
-                  <button id="btn-switch-camera" onclick="switchCamera()" title="Switch Camera" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                    <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
-                  </button>
-                  <!-- Start/Stop stream btn -->
-                  <button id="btn-stream" onclick="toggleStream()" class="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all bg-gradient-to-r from-brand-purple to-brand-teal text-white shadow-glow hover:shadow-teal hover-lift active:scale-95">
-                    <svg id="stream-icon-play" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
-                    <svg id="stream-icon-stop" class="w-4 h-4 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/></svg>
-                    <span id="stream-btn-text">Start Stream</span>
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
 
           <!-- Step cards -->
@@ -912,7 +892,7 @@
       document.getElementById('fs-compress').classList.toggle('hidden', !isFs);
       // Hide toolbar labels in fullscreen
       document.querySelectorAll('.toolbar-label').forEach(el => el.classList.toggle('hidden', isFs));
-      const mainLabel = document.getElementById('bottom-toolbar-labels');
+      const mainLabel = document.getElementById('top-toolbar-labels');
       if (mainLabel) mainLabel.classList.toggle('hidden', isFs);
       updateVideoStyles();
     });
