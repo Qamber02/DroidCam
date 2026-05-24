@@ -657,7 +657,7 @@
                         zoom: caps.zoom ? { min: caps.zoom.min, max: caps.zoom.max, step: caps.zoom.step, current: settings.zoom } : null,
                         focusMode: caps.focusMode ? { options: caps.focusMode, current: settings.focusMode } : null,
                         exposureCompensation: caps.exposureCompensation ? { min: caps.exposureCompensation.min, max: caps.exposureCompensation.max, step: caps.exposureCompensation.step, current: settings.exposureCompensation } : null,
-                        torch: true // Force true to show on Dashboard
+                        torch: { current: isFlashOn } // Force true and pass state
                     });
                 } else {
                     // Send null capabilities if track capabilities are unavailable
