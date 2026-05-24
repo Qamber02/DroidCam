@@ -291,6 +291,13 @@
                     </div>
                     <input type="range" id="hw-exposure" step="0.1" value="0" class="w-20 h-[5px] mt-0.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
                   </div>
+                  <!-- Hardware Torch -->
+                  <div id="hw-torch-container" class="hidden flex-col ml-2 mr-2">
+                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Flash</span>
+                    <button id="hw-torch" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-3 py-1 focus:outline-none hover:bg-gray-700/80 transition-colors active:scale-95">
+                      Toggle
+                    </button>
+                  </div>
                 </div>
                 <!-- Right controls -->
                 <div class="flex items-center gap-2">
@@ -628,6 +635,24 @@
       } else {
         expContainer.classList.add('hidden');
         expContainer.classList.remove('flex');
+      }
+
+      // Torch
+      const torchContainer = document.getElementById('hw-torch-container');
+      if (caps.torch) {
+        torchContainer.classList.remove('hidden');
+        torchContainer.classList.add('flex');
+        const btn = document.getElementById('hw-torch');
+        if (caps.torch.current) {
+            btn.classList.add('text-brand-purple', 'bg-brand-purple/20');
+            btn.classList.remove('text-gray-300', 'bg-gray-800/80');
+        } else {
+            btn.classList.remove('text-brand-purple', 'bg-brand-purple/20');
+            btn.classList.add('text-gray-300', 'bg-gray-800/80');
+        }
+      } else {
+        torchContainer.classList.add('hidden');
+        torchContainer.classList.remove('flex');
       }
     });
 
@@ -1137,6 +1162,20 @@
     document.getElementById('hw-exposure').addEventListener('input', (e) => {
       document.getElementById('hw-exposure-value').textContent = Number(e.target.value).toFixed(1);
       socket.emit('hardware_control', { type: 'exposureCompensation', value: parseFloat(e.target.value) });
+    });
+
+    document.getElementById('hw-torch').addEventListener('click', (e) => {
+      const btn = e.target;
+      const isCurrentlyOn = btn.classList.contains('text-brand-purple');
+      const willBeOn = !isCurrentlyOn;
+      if (willBeOn) {
+        btn.classList.add('text-brand-purple', 'bg-brand-purple/20');
+        btn.classList.remove('text-gray-300', 'bg-gray-800/80');
+      } else {
+        btn.classList.remove('text-brand-purple', 'bg-brand-purple/20');
+        btn.classList.add('text-gray-300', 'bg-gray-800/80');
+      }
+      socket.emit('hardware_control', { type: 'torch', value: willBeOn });
     });
 
     // ────────────────────── Glassmorphic Toast Notification ──────────────────────
