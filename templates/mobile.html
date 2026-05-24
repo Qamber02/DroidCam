@@ -298,7 +298,7 @@
 
         // Hidden canvas for frame capture
         const captureCanvas = document.createElement('canvas');
-        const captureCtx = captureCanvas.getContext('2d');
+        const captureCtx = captureCanvas.getContext('2d', { willReadFrequently: true });
 
         // ——————————————————————————————————
         // DOM References
@@ -493,8 +493,8 @@
 
             const constraints = {
                 video: {
-                    width:  { ideal: 4096 },
-                    height: { ideal: 4096 },
+                    width:  { ideal: currentMaxWidth },
+                    height: { ideal: currentMaxHeight },
                     facingMode: 'environment',
                 },
                 audio: false,
