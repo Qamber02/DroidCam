@@ -65,33 +65,32 @@
   </style>
 </head>
 
-<body class="bg-surface-base text-gray-200 font-sans h-full overflow-x-hidden antialiased">
+<body class="bg-surface-base text-gray-200 font-sans min-h-full overflow-x-hidden antialiased">
 
-  <!-- ══════════════════════════ TOP NAVBAR ══════════════════════════ -->
   <header class="sticky top-0 z-50 glass border-b border-surface-border">
-    <div class="max-w-[1600px] mx-auto flex items-center justify-between px-4 sm:px-6 h-14">
-      <!-- Logo -->
-      <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple to-brand-teal flex items-center justify-center shadow-glow">
-          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+    <div class="max-w-[1500px] mx-auto flex flex-wrap items-center gap-3 px-3 sm:px-5 py-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-400/25 flex items-center justify-center shadow-teal">
+          <svg class="w-[18px] h-[18px] text-cyan-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
         </div>
-        <span class="text-base font-extrabold tracking-tight hidden sm:inline premium-gradient-text drop-shadow-md">DroidCam MVP</span>
+        <div class="min-w-0">
+          <p class="text-sm font-extrabold text-white truncate">DroidCam MVP</p>
+          <p class="hidden sm:block text-[11px] text-gray-500">Local camera stream dashboard</p>
+        </div>
       </div>
 
-      <!-- Centre: Tabs -->
-      <nav class="flex items-center gap-1 bg-surface-card rounded-lg p-1">
-        <button id="tab-livestream" onclick="switchTab('livestream')" class="tab-btn px-4 py-1.5 text-xs font-semibold rounded-md transition-gpu active">Live Stream</button>
-        <button id="tab-recordings" onclick="switchTab('recordings')" class="tab-btn px-4 py-1.5 text-xs font-semibold rounded-md transition-gpu">Recordings</button>
-        <button id="tab-snapshots" onclick="switchTab('snapshots')" class="tab-btn px-4 py-1.5 text-xs font-semibold rounded-md transition-gpu">Snapshots</button>
+      <nav class="order-3 sm:order-none w-full sm:w-auto sm:ml-auto flex items-center gap-1 bg-black/25 border border-white/10 rounded-lg p-1 overflow-x-auto">
+        <button id="tab-livestream" onclick="switchTab('livestream')" class="tab-btn flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs font-semibold rounded-md transition-gpu active whitespace-nowrap">Live Stream</button>
+        <button id="tab-recordings" onclick="switchTab('recordings')" class="tab-btn flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs font-semibold rounded-md transition-gpu whitespace-nowrap">Recordings</button>
+        <button id="tab-snapshots" onclick="switchTab('snapshots')" class="tab-btn flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs font-semibold rounded-md transition-gpu whitespace-nowrap">Snapshots</button>
       </nav>
 
-      <!-- Status badges -->
-      <div class="flex items-center gap-3">
-        <span id="badge-dashboard" class="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-card border border-surface-border">
+      <div class="ml-auto sm:ml-0 flex items-center gap-2">
+        <span id="badge-dashboard" class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-full bg-black/25 border border-white/10">
           <span class="w-1.5 h-1.5 rounded-full bg-gray-500" id="dot-dashboard"></span>
           <span class="hidden sm:inline">Dashboard</span>
         </span>
-        <span id="badge-phone" class="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full bg-surface-card border border-surface-border">
+        <span id="badge-phone" class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-full bg-black/25 border border-white/10">
           <span class="w-1.5 h-1.5 rounded-full bg-gray-500" id="dot-phone"></span>
           <span class="hidden sm:inline">Phone</span>
         </span>
@@ -99,19 +98,157 @@
     </div>
   </header>
 
-  <!-- ══════════════════════════ MAIN CONTENT ══════════════════════════ -->
-  <main class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+  <main class="max-w-[1500px] mx-auto px-3 sm:px-5 py-4 sm:py-6">
 
-    <!-- ───────── LIVE STREAM TAB ───────── -->
     <section id="view-livestream">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="dashboard-grid">
 
-        <!-- LEFT PANEL: Pairing ─────────── -->
-        <aside class="lg:col-span-4 space-y-4">
-          <!-- Pairing card -->
-          <div class="bg-surface-card rounded-2xl border border-surface-border overflow-hidden">
-            <!-- WiFi / Cable tabs -->
-            <div class="flex border-b border-surface-border">
+        <div class="stream-column space-y-3">
+          <div id="top-toolbar" class="surface-panel px-3 sm:px-4 py-3">
+            <div class="toolbar-grid">
+              <div class="toolbar-controls">
+                <label class="toolbar-field">
+                  <span id="top-toolbar-labels">Quality</span>
+                  <select id="ctrl-quality" class="control-select">
+                    <option value="360p">360p</option>
+                    <option value="480p">480p</option>
+                    <option value="720p" selected>720p</option>
+                    <option value="1080p">1080p</option>
+                  </select>
+                </label>
+
+                <label class="toolbar-field compact">
+                  <span class="toolbar-label">FPS</span>
+                  <select id="ctrl-fps" class="control-select">
+                    <option value="10">10</option>
+                    <option value="15" selected>15</option>
+                    <option value="30">30</option>
+                    <option value="60">60</option>
+                  </select>
+                </label>
+
+                <label class="toolbar-field camera-field">
+                  <span class="toolbar-label">Camera</span>
+                  <select id="ctrl-camera" class="control-select">
+                    <option value="">No cameras</option>
+                  </select>
+                </label>
+
+                <label class="toolbar-field">
+                  <span class="toolbar-label">Lens</span>
+                  <select id="ctrl-lens" class="control-select">
+                    <option value="auto" selected>Auto best</option>
+                    <option value="standard">Standard</option>
+                    <option value="macro">Macro zoom</option>
+                  </select>
+                </label>
+
+                <div id="hw-zoom-container" class="toolbar-field hidden">
+                  <div class="flex justify-between items-center gap-2">
+                    <span class="toolbar-label">Zoom</span>
+                    <span id="hw-zoom-value" class="text-[10px] font-mono text-gray-400">1.0x</span>
+                  </div>
+                  <input type="range" id="hw-zoom" step="0.1" value="1" class="control-range">
+                </div>
+
+                <label id="hw-focus-container" class="toolbar-field hidden">
+                  <span class="toolbar-label">Focus</span>
+                  <select id="hw-focus" class="control-select"></select>
+                </label>
+
+                <div id="hw-exposure-container" class="toolbar-field hidden">
+                  <div class="flex justify-between items-center gap-2">
+                    <span class="toolbar-label">Exposure</span>
+                    <span id="hw-exposure-value" class="text-[10px] font-mono text-gray-400">0.0</span>
+                  </div>
+                  <input type="range" id="hw-exposure" step="0.1" value="0" class="control-range">
+                </div>
+
+                <div id="hw-torch-container" class="toolbar-field compact hidden">
+                  <span class="toolbar-label">Flash</span>
+                  <button id="hw-torch" class="control-button px-3">Toggle</button>
+                </div>
+              </div>
+
+              <div class="toolbar-actions">
+                <button id="stream-toggle" onclick="toggleStream()" class="stream-toggle-btn" title="Start or stop stream">
+                  <svg id="stream-icon-play" class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  <svg id="stream-icon-stop" class="w-4 h-4 shrink-0 hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h12v12H6z"/></svg>
+                  <span id="stream-btn-text">Start Stream</span>
+                </button>
+
+                <button id="btn-record" onclick="toggleRecording()" title="Record" class="icon-button">
+                  <svg id="rec-icon-idle" class="w-4 h-4 text-gray-400 transition-gpu" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+                  <svg id="rec-icon-active" class="w-4 h-4 text-red-500 animate-rec-pulse hidden" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+                </button>
+                <button id="btn-snapshot" onclick="takeSnapshot()" title="Take Snapshot" class="icon-button">
+                  <svg class="w-4 h-4 text-gray-400 transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316A2.192 2.192 0 0 0 14.51 3.75h-5.02a2.192 2.192 0 0 0-1.84 1.008l-.822 1.317Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/></svg>
+                </button>
+                <button id="btn-fit-mode" onclick="toggleFitMode()" title="Toggle Fit/Fill" class="icon-button">
+                  <svg class="w-4 h-4 text-gray-400 transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15"/></svg>
+                </button>
+                <button id="btn-rotate" onclick="rotateVideo()" title="Rotate 90 degrees" class="icon-button">
+                  <svg class="w-4 h-4 text-gray-400 transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17"/></svg>
+                </button>
+                <button id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen" class="icon-button">
+                  <svg id="fs-expand" class="w-4 h-4 text-gray-400 transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
+                  <svg id="fs-compress" class="w-4 h-4 text-gray-400 transition-gpu hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="viewport-container" class="viewport-container relative surface-panel overflow-hidden">
+            <div class="absolute top-0 inset-x-0 z-20 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 py-3 bg-gradient-to-b from-black/75 to-transparent pointer-events-none">
+              <span id="stream-status-badge" class="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-gray-800/80 text-gray-400 border border-gray-700/50 pointer-events-auto">
+                <span id="stream-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+                <span id="stream-label">Stream Offline</span>
+              </span>
+              <div class="flex flex-wrap items-center justify-end gap-2 pointer-events-auto">
+                <span id="stat-fps" class="stat-badge hidden">0 FPS</span>
+                <span id="stat-size" class="stat-badge hidden">0x0</span>
+                <span id="stat-latency" class="stat-badge hidden">0 ms</span>
+                <span id="rec-indicator" class="items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-red-950/80 text-red-300 border border-red-500/30 hidden">
+                  <span class="w-2 h-2 rounded-full bg-red-500 animate-rec-pulse inline-block"></span>
+                  REC <span id="rec-timer">00:00</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="relative flex items-center justify-center bg-black" id="video-area">
+              <div id="offline-placeholder" class="absolute inset-0 flex flex-col items-center justify-center gap-4 px-5 text-center text-gray-500">
+                <div class="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                  <svg class="w-10 h-10 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-gray-300">Waiting for phone camera</p>
+                  <p class="text-xs text-gray-500 mt-1 max-w-sm">Pair the phone, then start streaming from either device.</p>
+                </div>
+              </div>
+              <img id="live-stream" alt="Live camera stream" class="hidden absolute inset-0 w-full h-full object-contain" />
+              <div id="shutter-flash" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150"></div>
+            </div>
+          </div>
+
+          <div class="quick-steps">
+            <div class="mini-step">
+              <span>1</span>
+              <p>Pair phone</p>
+            </div>
+            <div class="mini-step">
+              <span>2</span>
+              <p>Allow camera</p>
+            </div>
+            <div class="mini-step">
+              <span>3</span>
+              <p>Start stream</p>
+            </div>
+          </div>
+        </div>
+
+        <aside class="pairing-column">
+          <div class="surface-panel overflow-hidden">
+            <div class="flex border-b border-white/10">
               <button id="pair-tab-wifi" onclick="switchPairTab('wifi')" class="pair-tab flex-1 py-3 text-xs font-semibold text-center transition-gpu active">
                 <span class="inline-flex items-center gap-1.5">
                   <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01M4.93 11.684a9.967 9.967 0 0114.14 0M1.394 8.046a15.454 15.454 0 0121.212 0"/></svg>
@@ -126,245 +263,64 @@
               </button>
             </div>
 
-            <!-- WiFi content -->
-            <div id="pair-wifi" class="p-5 space-y-4">
-              <!-- Network selector -->
-              <div>
-                <label class="block text-[11px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">Network Interface</label>
-                <select id="network-selector" onchange="updatePairing()" class="w-full bg-surface-base border border-surface-border rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-8">
-                </select>
-              </div>
-              <!-- QR Code -->
-              <div class="flex justify-center">
-                <div id="qr-container" class="bg-white rounded-xl p-3 shadow-lg">
-                  <img id="qr-code-img" src="" alt="QR Code" class="w-36 h-36" />
+            <div id="pair-wifi" class="p-4 sm:p-5 space-y-4">
+              <label class="block">
+                <span class="block text-[11px] uppercase text-gray-500 font-semibold mb-1.5">Network Interface</span>
+                <select id="network-selector" onchange="updatePairing()" class="control-select w-full text-sm"></select>
+              </label>
+
+              <div class="qr-layout">
+                <div id="qr-container" class="bg-white rounded-xl p-3 shadow-lg shrink-0">
+                  <img id="qr-code-img" src="" alt="QR Code" class="w-32 h-32 sm:w-36 sm:h-36" />
+                </div>
+                <div class="min-w-0 flex-1 space-y-2">
+                  <div class="info-row">
+                    <span id="connection-url" class="text-xs font-mono text-cyan-300 truncate"></span>
+                    <button onclick="copyUrl(event)" class="ml-2 text-gray-500 hover:text-cyan-300 transition-gpu shrink-0" title="Copy URL">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    </button>
+                  </div>
+                  <div class="info-row">
+                    <span id="connection-ip" class="text-xs font-mono text-gray-400 truncate"></span>
+                  </div>
+                  <div class="info-row">
+                    <span class="text-xs text-gray-500 font-semibold uppercase">Pairing PIN</span>
+                    <span id="pairing-pin-display" class="text-sm font-bold font-mono text-amber-300 tracking-widest">{{ pairing_pin }}</span>
+                  </div>
                 </div>
               </div>
-              <!-- URL display -->
-              <div class="space-y-2">
-                <div class="bg-surface-base rounded-lg px-3 py-2.5 flex items-center justify-between border border-surface-border">
-                  <span id="connection-url" class="text-xs font-mono text-brand-teal truncate"></span>
-                  <button onclick="copyUrl()" class="ml-2 text-gray-500 hover:text-brand-purple transition-gpu" title="Copy URL">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                  </button>
-                </div>
-                <div class="bg-surface-base rounded-lg px-3 py-2.5 border border-surface-border">
-                  <span id="connection-ip" class="text-xs font-mono text-gray-400"></span>
-                </div>
-              </div>
-              <!-- Pairing PIN Display -->
-              <div class="flex items-center justify-between bg-surface-base border border-surface-border rounded-lg px-3 py-2.5">
-                <span class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Pairing PIN</span>
-                <span id="pairing-pin-display" class="text-sm font-bold font-mono text-brand-purple tracking-widest">{{ pairing_pin }}</span>
-              </div>
-              <!-- SSL Warning -->
-              <div class="flex items-start gap-2 text-[11px] text-yellow-500/80 bg-yellow-500/5 border border-yellow-500/10 rounded-lg px-3 py-2">
-                <svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span>Your browser may show a security warning for the self-signed SSL certificate. Click <strong>Advanced → Proceed</strong> to continue.</span>
+
+              <div class="notice-box">
+                <svg class="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Your browser may show a security warning for the self-signed SSL certificate. Click <strong>Advanced - Proceed</strong> to continue.</span>
               </div>
             </div>
 
-            <!-- Cable content -->
-            <div id="pair-cable" class="p-5 space-y-4 hidden">
-              <!-- ADB reverse -->
+            <div id="pair-cable" class="p-4 sm:p-5 space-y-4 hidden">
               <div>
                 <h3 class="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-2">
-                  <span class="w-5 h-5 rounded-full bg-brand-purple/20 text-brand-purple text-[10px] font-bold flex items-center justify-center">1</span>
-                  ADB Reverse (Recommended)
+                  <span class="step-number">1</span>
+                  ADB Reverse
                 </h3>
-                <div class="bg-surface-base rounded-lg px-3 py-2.5 border border-surface-border">
-                  <code class="text-xs text-brand-teal font-mono">adb reverse tcp:{{ port }} tcp:{{ port }}</code>
+                <div class="info-row">
+                  <code class="text-xs text-cyan-300 font-mono break-all">adb reverse tcp:{{ port }} tcp:{{ port }}</code>
                 </div>
-                <p class="text-[11px] text-gray-500 mt-1.5">Run this command on your PC, then open <span class="text-brand-teal font-mono">https://localhost:{{ port }}</span> on your phone's browser.</p>
+                <p class="text-[11px] text-gray-500 mt-1.5">Run this command on your PC, then open <span class="text-cyan-300 font-mono">https://localhost:{{ port }}</span> on the phone.</p>
               </div>
-              <!-- USB tethering -->
               <div>
                 <h3 class="text-xs font-semibold text-gray-300 mb-2 flex items-center gap-2">
-                  <span class="w-5 h-5 rounded-full bg-brand-teal/20 text-brand-teal text-[10px] font-bold flex items-center justify-center">2</span>
+                  <span class="step-number green">2</span>
                   USB Tethering
                 </h3>
                 <ol class="text-[11px] text-gray-400 space-y-1 list-decimal list-inside ml-1">
-                  <li>Connect your phone via USB cable</li>
-                  <li>Enable <strong class="text-gray-300">USB Tethering</strong> in phone Settings → Network</li>
-                  <li>Open the connection URL in your phone's browser</li>
+                  <li>Connect the phone via USB cable</li>
+                  <li>Enable USB Tethering in phone settings</li>
+                  <li>Open the connection URL in the phone browser</li>
                 </ol>
               </div>
             </div>
           </div>
         </aside>
-
-        <!-- RIGHT PANEL: Video Viewport ─────────── -->
-        <div class="lg:col-span-8 space-y-4">
-          <!-- Top Control Toolbar -->
-          <div id="top-toolbar" class="bg-surface-card rounded-2xl border border-surface-border px-5 py-3 shadow-sm">
-            <div class="flex items-center justify-between gap-3 flex-wrap">
-              <!-- Left controls -->
-              <div class="flex items-center gap-2 flex-wrap">
-                <!-- Quality -->
-                <div class="flex flex-col">
-                  <span id="top-toolbar-labels" class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5">Quality</span>
-                  <select id="ctrl-quality" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
-                    <option value="360p">360p</option>
-                    <option value="480p" selected>480p</option>
-                    <option value="720p">720p</option>
-                    <option value="1080p">1080p</option>
-                  </select>
-                </div>
-                <!-- FPS -->
-                <div class="flex flex-col">
-                  <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">FPS</span>
-                  <select id="ctrl-fps" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
-                    <option value="10">10</option>
-                    <option value="15" selected>15</option>
-                    <option value="30">30</option>
-                    <option value="60">60</option>
-                  </select>
-                </div>
-                <!-- Camera -->
-                <div class="flex flex-col">
-                  <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Camera</span>
-                  <select id="ctrl-camera" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer min-w-[80px]">
-                    <option value="">No cameras</option>
-                  </select>
-                </div>
-                <!-- Hardware Zoom Slider -->
-                <div id="hw-zoom-container" class="hidden flex-col ml-3">
-                  <div class="flex justify-between items-center mb-0.5">
-                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold toolbar-label">Zoom</span>
-                    <span id="hw-zoom-value" class="text-[9px] font-mono text-gray-400">1.0x</span>
-                  </div>
-                  <input type="range" id="hw-zoom" step="0.1" value="1" class="w-20 h-[5px] mt-0.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
-                </div>
-                <!-- Hardware Focus Mode -->
-                <div id="hw-focus-container" class="hidden flex-col ml-2">
-                  <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Focus</span>
-                  <select id="hw-focus" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
-                  </select>
-                </div>
-                <!-- Hardware Exposure -->
-                <div id="hw-exposure-container" class="hidden flex-col ml-2 mr-2">
-                  <div class="flex justify-between items-center mb-0.5">
-                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold toolbar-label">Exposure</span>
-                    <span id="hw-exposure-value" class="text-[9px] font-mono text-gray-400">0.0</span>
-                  </div>
-                  <input type="range" id="hw-exposure" step="0.1" value="0" class="w-20 h-[5px] mt-0.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
-                </div>
-                <!-- Hardware Torch -->
-                <div id="hw-torch-container" class="hidden flex-col ml-2 mr-2">
-                  <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Flash</span>
-                  <button id="hw-torch" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-3 py-1 focus:outline-none hover:bg-gray-700/80 transition-colors active:scale-95">
-                    Toggle
-                  </button>
-                </div>
-              </div>
-              <!-- Right controls -->
-              <div class="flex items-center gap-2">
-                <!-- Record btn -->
-                <button id="btn-record" onclick="toggleRecording()" title="Record" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                  <svg id="rec-icon-idle" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
-                  <svg id="rec-icon-active" class="w-4 h-4 text-red-500 animate-rec-pulse hidden" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
-                </button>
-                <!-- Snapshot btn -->
-                <button id="btn-snapshot" onclick="takeSnapshot()" title="Take Snapshot" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                  <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316A2.192 2.192 0 0 0 14.51 3.75h-5.02a2.192 2.192 0 0 0-1.84 1.008l-.822 1.317Z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
-                  </svg>
-                </button>
-                <!-- Fit Mode Toggle btn -->
-                <button id="btn-fit-mode" onclick="toggleFitMode()" title="Toggle Fit/Fill" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                  <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
-                  </svg>
-                </button>
-                <!-- Rotate btn -->
-                <button id="btn-rotate" onclick="rotateVideo()" title="Rotate 90°" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                  <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17" />
-                  </svg>
-                </button>
-                <!-- Fullscreen btn -->
-                <button id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen" class="w-9 h-9 rounded-full bg-gray-800/80 border border-gray-700/50 flex items-center justify-center hover:bg-gray-700/80 transition-gpu group">
-                  <svg id="fs-expand" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
-                  <svg id="fs-compress" class="w-4 h-4 text-gray-400 group-hover:text-white transition-gpu hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"/></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-          <div id="viewport-container" class="viewport-container relative bg-surface-card rounded-2xl border border-surface-border overflow-hidden" style="min-height: 420px;">
-
-            <!-- Top overlay bar -->
-            <div class="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 py-2.5 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
-              <div class="flex items-center gap-3 pointer-events-auto">
-                <!-- Stream status -->
-                <span id="stream-status-badge" class="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-gray-800/80 text-gray-400 border border-gray-700/50">
-                  <span id="stream-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                  <span id="stream-label">Stream Offline</span>
-                </span>
-              </div>
-              <div class="flex items-center gap-2 pointer-events-auto">
-                <!-- Stats badges -->
-                <span id="stat-fps" class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-gray-800/80 text-gray-400 border border-gray-700/50 hidden">0 FPS</span>
-                <span id="stat-size" class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-gray-800/80 text-gray-400 border border-gray-700/50 hidden">0×0</span>
-                <span id="stat-latency" class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-gray-800/80 text-gray-400 border border-gray-700/50 hidden">0 ms</span>
-                <!-- REC indicator -->
-                <span id="rec-indicator" class="items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-red-900/60 text-red-400 border border-red-700/50 hidden">
-                  <span class="w-2 h-2 rounded-full bg-red-500 animate-rec-pulse inline-block"></span>
-                  REC <span id="rec-timer">00:00</span>
-                </span>
-              </div>
-            </div>
-
-            <!-- Video / Placeholder -->
-            <div class="relative flex items-center justify-center" style="min-height: 420px;" id="video-area">
-              <!-- Offline placeholder -->
-              <div id="offline-placeholder" class="flex flex-col items-center justify-center gap-4 text-gray-600">
-                <div class="w-20 h-20 rounded-full bg-surface-base border-2 border-surface-border flex items-center justify-center">
-                  <svg class="w-10 h-10 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
-                </div>
-                <div class="text-center">
-          </div>
-
-          <!-- Step cards -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <!-- Step 1 -->
-            <div class="bg-surface-card rounded-xl border border-surface-border p-4 hover:border-brand-purple/50 hover-lift transition-all group">
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 rounded-lg bg-brand-purple/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-purple/20 transition-gpu">
-                  <svg class="w-4 h-4 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/></svg>
-                </div>
-                <div>
-                  <h3 class="text-xs font-bold text-gray-300">Step 1</h3>
-                  <p class="text-[11px] text-gray-500 mt-0.5">Connect your device via WiFi or USB cable</p>
-                </div>
-              </div>
-            </div>
-            <!-- Step 2 -->
-            <div class="bg-surface-card rounded-xl border border-surface-border p-4 hover:border-brand-teal/50 hover-lift transition-all group">
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 rounded-lg bg-brand-teal/10 flex items-center justify-center flex-shrink-0 group-hover:bg-brand-teal/20 transition-gpu">
-                  <svg class="w-4 h-4 text-brand-teal" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
-                </div>
-                <div>
-                  <h3 class="text-xs font-bold text-gray-300">Step 2</h3>
-                  <p class="text-[11px] text-gray-500 mt-0.5">Bypass security warning — accept the self-signed certificate</p>
-                </div>
-              </div>
-            </div>
-            <!-- Step 3 -->
-            <div class="bg-surface-card rounded-xl border border-surface-border p-4 hover:border-brand-purple/50 hover-lift transition-all group subtle-pulse">
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-purple/20 to-brand-teal/20 flex items-center justify-center flex-shrink-0 group-hover:from-brand-purple/30 group-hover:to-brand-teal/30 transition-gpu">
-                  <svg class="w-4 h-4 text-brand-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
-                </div>
-                <div>
-                  <h3 class="text-xs font-bold text-gray-300">Step 3</h3>
-                  <p class="text-[11px] text-gray-500 mt-0.5">Start streaming instantly — zero configuration needed</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -533,6 +489,10 @@
         document.getElementById('ctrl-fps').value = String(data.fps);
       }
 
+      if (data.lens_mode) {
+        document.getElementById('ctrl-lens').value = data.lens_mode;
+      }
+
       // Camera list
       if (data.cameras && data.cameras.length > 0) {
         const sel = document.getElementById('ctrl-camera');
@@ -638,7 +598,7 @@
 
     // ────────────────────── Video Frame Handler ──────────────────────
     socket.on('video_frame', (data) => {
-      socket.emit('frame_ack');
+      socket.emit('frame_ack', { frame_id: data.frame_id });
       if (!data.image || !data.timestamp) return;
 
       const now = Date.now();
@@ -656,7 +616,7 @@
       if (relativeLatency > 200) return;
 
       // Convert ArrayBuffer to Blob URL
-      const blob = new Blob([data.image], { type: 'image/jpeg' });
+      const blob = new Blob([data.image], { type: data.mime_type || 'image/jpeg' });
       const url = URL.createObjectURL(blob);
       const img = document.getElementById('live-stream');
 
@@ -752,11 +712,11 @@
       document.getElementById('connection-ip').textContent = conn.ip + ':' + serverPort;
     }
 
-    function copyUrl() {
+    function copyUrl(evt) {
       const url = document.getElementById('connection-url').textContent;
       navigator.clipboard.writeText(url).then(() => {
         // Brief visual feedback
-        const btn = event.currentTarget;
+        const btn = evt.currentTarget;
         btn.classList.add('text-brand-teal');
         setTimeout(() => btn.classList.remove('text-brand-teal'), 1200);
       }).catch(() => {});
@@ -813,6 +773,10 @@
 
     document.getElementById('ctrl-camera').addEventListener('change', (e) => {
       socket.emit('select_camera_request', { device_id: e.target.value });
+    });
+
+    document.getElementById('ctrl-lens').addEventListener('change', (e) => {
+      socket.emit('set_lens_mode', { lens_mode: e.target.value });
     });
 
     function switchCamera() {

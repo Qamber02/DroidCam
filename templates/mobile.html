@@ -131,7 +131,7 @@
                     <span id="stream-label" class="whitespace-nowrap">Standby</span>
                 </span>
                 <!-- Quality Badge -->
-                <span id="quality-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brandPurple/20 text-brandPurple shrink-0 whitespace-nowrap">480p</span>
+                <span id="quality-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brandPurple/20 text-brandPurple shrink-0 whitespace-nowrap">720p</span>
                 <!-- FPS Badge -->
                 <span id="fps-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brandTeal/20 text-brandTeal shrink-0 whitespace-nowrap">15 FPS</span>
             </div>
@@ -152,8 +152,8 @@
                 <!-- JPEG Quality slider -->
                 <div class="flex items-center gap-3">
                     <label for="quality-slider" class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">Quality</label>
-                    <input id="quality-slider" type="range" min="10" max="95" value="45" class="flex-1 min-w-0 w-full accent-brandPurple">
-                    <span id="quality-slider-value" class="text-xs sm:text-sm text-gray-400 font-mono w-10 text-right shrink-0">45%</span>
+                    <input id="quality-slider" type="range" min="40" max="95" value="82" class="flex-1 min-w-0 w-full accent-brandPurple">
+                    <span id="quality-slider-value" class="text-xs sm:text-sm text-gray-400 font-mono w-10 text-right shrink-0">82%</span>
                 </div>
 
                 <!-- FPS display (read-only) -->
@@ -168,6 +168,16 @@
                     <label for="zoom-slider" class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">Zoom</label>
                     <input id="zoom-slider" type="range" class="flex-1 min-w-0 w-full accent-brandPurple">
                     <span id="zoom-value" class="text-xs sm:text-sm text-gray-400 font-mono w-10 text-right shrink-0">1.0x</span>
+                </div>
+
+                <!-- Lens mode selector -->
+                <div class="flex items-center gap-3">
+                    <label for="lens-mode-select" class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">Lens</label>
+                    <select id="lens-mode-select" class="flex-1 min-w-0 w-full bg-darkBg border border-white/10 rounded-xl px-3 py-2 text-xs sm:text-sm text-gray-200 focus:outline-none focus:border-brandPurple/50 appearance-none truncate">
+                        <option value="auto">Auto best</option>
+                        <option value="standard">Standard</option>
+                        <option value="macro">Macro zoom</option>
+                    </select>
                 </div>
 
                 <!-- Focus Mode (dynamic) -->
@@ -272,10 +282,10 @@
         // Quality presets
         // ——————————————————————————————————
         const QUALITY_PRESETS = {
-            '360p':  { width: 480,  height: 360  },
-            '480p':  { width: 640,  height: 480  },
-            '720p':  { width: 1280, height: 720  },
-            '1080p': { width: 1920, height: 1080 },
+            '360p':  { width: 480,  height: 360,  jpegQuality: 58 },
+            '480p':  { width: 640,  height: 480,  jpegQuality: 68 },
+            '720p':  { width: 1280, height: 720,  jpegQuality: 82 },
+            '1080p': { width: 1920, height: 1080, jpegQuality: 90 },
         };
 
         // ——————————————————————————————————
@@ -285,20 +295,19 @@
         let isStreaming = false;
         let frameTimeout = null;
         let selectedDeviceId = '';
-        let unackedFrames = 0;
-        let ackTimeoutId = null;
+        let nextFrameId = 0;
+        let pendingFrames = new Map();
         let imageCapture = null;
-        let currentQuality = '480p';
-        let currentMaxWidth = 640;
-        let currentMaxHeight = 480;
+        let knownCameras = [];
+        let currentQuality = '720p';
+        let currentMaxWidth = 1280;
+        let currentMaxHeight = 720;
         let currentFps = 15;
-        let currentJpegQuality = 45;
+        let currentJpegQuality = 82;
+        let currentLensMode = 'auto';
+        let isFlashOn = false;
 
-        // WebP support detection
-        const testCanvas = document.createElement('canvas');
-        testCanvas.width = 1; testCanvas.height = 1;
-        const supportsWebP = testCanvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
-        const encodeFormat = supportsWebP ? 'image/webp' : 'image/jpeg';
+        const encodeFormat = 'image/jpeg';
 
         // Hidden canvas for frame capture
         const captureCanvas = document.createElement('canvas');
@@ -325,6 +334,7 @@
         const fpsBadge           = document.getElementById('fps-badge');
 
         const cameraSelect       = document.getElementById('camera-select');
+        const lensModeSelect     = document.getElementById('lens-mode-select');
         const qualitySlider      = document.getElementById('quality-slider');
         const qualitySliderValue = document.getElementById('quality-slider-value');
         const fpsDisplay         = document.getElementById('fps-display');
@@ -437,6 +447,8 @@
             if (!data || !data.device_id) return;
             selectedDeviceId = data.device_id;
             cameraSelect.value = selectedDeviceId;
+            currentLensMode = 'auto';
+            lensModeSelect.value = currentLensMode;
 
             const wasStreaming = isStreaming;
             if (isStreaming) stopStreaming();
@@ -451,8 +463,11 @@
             currentQuality = data.quality || currentQuality;
             currentMaxWidth = data.width || currentMaxWidth;
             currentMaxHeight = data.height || currentMaxHeight;
+            currentJpegQuality = data.jpeg_quality || QUALITY_PRESETS[currentQuality]?.jpegQuality || currentJpegQuality;
 
             qualityBadge.textContent = currentQuality;
+            qualitySlider.value = currentJpegQuality;
+            qualitySliderValue.textContent = currentJpegQuality + '%';
 
             if (localStream) {
                 const wasStreaming = isStreaming;
@@ -462,6 +477,11 @@
                     if (wasStreaming) startStreaming();
                 });
             }
+        });
+
+        socket.on('set_lens_mode', (data) => {
+            if (!data || !data.lens_mode) return;
+            switchLensMode(data.lens_mode);
         });
 
         socket.on('set_fps', (data) => {
@@ -475,12 +495,11 @@
             }
         });
 
-        socket.on('frame_ack', () => {
-            if (ackTimeoutId) {
-                clearTimeout(ackTimeoutId);
-                ackTimeoutId = null;
-            }
-            unackedFrames = Math.max(0, unackedFrames - 1);
+        socket.on('frame_ack', (data) => {
+            const frameId = data && data.frame_id;
+            if (!frameId || !pendingFrames.has(frameId)) return;
+            clearTimeout(pendingFrames.get(frameId));
+            pendingFrames.delete(frameId);
         });
 
         socket.on('take_highres_snapshot', async () => {
@@ -489,17 +508,18 @@
                     const photoBlob = await imageCapture.takePhoto();
                     socket.emit('save_snapshot', {
                         image: photoBlob,
+                        mime_type: photoBlob.type || 'image/jpeg',
                         timestamp: Date.now()
                     });
                 } catch (err) {
                     console.error('High-res snapshot failed, falling back to canvas:', err);
                     captureCanvas.toBlob((blob) => {
-                        socket.emit('save_snapshot', { image: blob, timestamp: Date.now() });
+                        socket.emit('save_snapshot', { image: blob, mime_type: 'image/jpeg', timestamp: Date.now() });
                     }, 'image/jpeg', 0.95);
                 }
             } else {
                 captureCanvas.toBlob((blob) => {
-                    socket.emit('save_snapshot', { image: blob, timestamp: Date.now() });
+                    socket.emit('save_snapshot', { image: blob, mime_type: 'image/jpeg', timestamp: Date.now() });
                 }, 'image/jpeg', 0.95);
             }
         });
@@ -533,6 +553,83 @@
             }
         });
 
+        function isMacroCamera(camera) {
+            return /macro|microscope|close[\s-]?up|near/i.test(camera.label || '');
+        }
+
+        function isRearCamera(camera) {
+            return /back|rear|environment|world/i.test(camera.label || '');
+        }
+
+        function cameraDisplayLabel(camera, index) {
+            const baseLabel = camera.label || ('Camera ' + (index + 1));
+            if (isMacroCamera(camera)) return baseLabel + ' (Macro)';
+            if (isRearCamera(camera)) return baseLabel + ' (Rear)';
+            return baseLabel;
+        }
+
+        function chooseCameraForLens(lensMode, cameras) {
+            if (!cameras || cameras.length === 0) return null;
+
+            const macroCamera = cameras.find(isMacroCamera);
+            const rearCamera = cameras.find((camera) => isRearCamera(camera) && !isMacroCamera(camera));
+
+            if (lensMode === 'macro') {
+                return macroCamera || rearCamera || cameras[0];
+            }
+            if (lensMode === 'standard') {
+                return rearCamera || cameras.find((camera) => !isMacroCamera(camera)) || cameras[0];
+            }
+            return rearCamera || macroCamera || cameras[0];
+        }
+
+        async function switchLensMode(lensMode) {
+            currentLensMode = lensMode;
+            lensModeSelect.value = currentLensMode;
+
+            if (knownCameras.length === 0) {
+                await loadCameraDevices();
+            }
+
+            const selectedCamera = chooseCameraForLens(currentLensMode, knownCameras);
+            if (!selectedCamera) return;
+
+            selectedDeviceId = selectedCamera.deviceId;
+            cameraSelect.value = selectedDeviceId;
+
+            const wasStreaming = isStreaming;
+            if (isStreaming) stopStreaming();
+
+            await initCamera();
+
+            if (wasStreaming) startStreaming();
+        }
+
+        async function applyBestEffortCameraDefaults(track) {
+            if (!track || !track.getCapabilities) return;
+
+            const caps = track.getCapabilities();
+            const advanced = [];
+
+            if (caps.focusMode && caps.focusMode.includes('continuous')) {
+                advanced.push({ focusMode: 'continuous' });
+            }
+            if (caps.exposureMode && caps.exposureMode.includes('continuous')) {
+                advanced.push({ exposureMode: 'continuous' });
+            }
+            if (caps.whiteBalanceMode && caps.whiteBalanceMode.includes('continuous')) {
+                advanced.push({ whiteBalanceMode: 'continuous' });
+            }
+
+            if (advanced.length === 0) return;
+
+            try {
+                await track.applyConstraints({ advanced });
+            } catch (err) {
+                console.warn('Best-effort camera defaults were not accepted', err);
+            }
+        }
+
         // ——————————————————————————————————
         // Camera Initialization
         // ——————————————————————————————————
@@ -552,7 +649,8 @@
                 video: {
                     width:  { ideal: currentMaxWidth },
                     height: { ideal: currentMaxHeight },
-                    facingMode: 'environment',
+                    frameRate: { ideal: currentFps },
+                    facingMode: { ideal: 'environment' },
                 },
                 audio: false,
             };
@@ -581,6 +679,7 @@
 
                 // Check for Advanced Capabilities (Zoom, Macro, Exposure)
                 const track = localStream.getVideoTracks()[0];
+                await applyBestEffortCameraDefaults(track);
                 
                 if (window.ImageCapture) {
                     imageCapture = new ImageCapture(track);
@@ -696,22 +795,29 @@
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const cameras = devices.filter(d => d.kind === 'videoinput');
+                knownCameras = cameras;
 
                 cameraSelect.innerHTML = '';
 
                 cameras.forEach((cam, i) => {
                     const opt = document.createElement('option');
                     opt.value = cam.deviceId;
-                    opt.textContent = cam.label || ('Camera ' + (i + 1));
+                    opt.textContent = cameraDisplayLabel(cam, i);
                     cameraSelect.appendChild(opt);
                 });
 
-                // Try to restore previous selection
-                if (selectedDeviceId && cameras.some(c => c.deviceId === selectedDeviceId)) {
+                const lensChoice = currentLensMode !== 'auto'
+                    ? chooseCameraForLens(currentLensMode, cameras)
+                    : null;
+
+                if (lensChoice) {
+                    selectedDeviceId = lensChoice.deviceId;
+                    cameraSelect.value = selectedDeviceId;
+                } else if (selectedDeviceId && cameras.some(c => c.deviceId === selectedDeviceId)) {
                     cameraSelect.value = selectedDeviceId;
                 } else {
                     // Default to back/environment camera if possible
-                    const backCam = cameras.find(c => /back|rear|environment/i.test(c.label));
+                    const backCam = chooseCameraForLens('auto', cameras);
                     if (backCam) {
                         selectedDeviceId = backCam.deviceId;
                     } else if (cameras.length > 0) {
@@ -723,11 +829,14 @@
                 // Emit cameras_updated
                 const cameraList = cameras.map(c => ({
                     id: c.deviceId,
-                    label: c.label || 'Camera',
+                    label: cameraDisplayLabel(c, cameras.indexOf(c)),
+                    lens_type: isMacroCamera(c) ? 'macro' : (isRearCamera(c) ? 'rear' : 'standard'),
                 }));
                 socket.emit('cameras_updated', {
                     cameras: cameraList,
                     active_camera: selectedDeviceId,
+                    lens_mode: currentLensMode,
+                    macro_available: cameras.some(isMacroCamera),
                 });
 
             } catch (err) {
@@ -748,8 +857,8 @@
 
             if (!isStreaming) return;
 
-            // Allow up to 3 frames in-flight to absorb network jitter without stuttering
-            if (unackedFrames >= 3) {
+            // Allow a few frames in flight to absorb jitter without building lag.
+            if (pendingFrames.size >= 3) {
                 scheduleNextFrame();
                 return;
             }
@@ -758,8 +867,6 @@
                 scheduleNextFrame();
                 return;
             }
-
-            unackedFrames++;
 
             const vw = video.videoWidth;
             const vh = video.videoHeight;
@@ -783,25 +890,25 @@
             captureCtx.drawImage(video, 0, 0, drawW, drawH);
 
             const qual = currentJpegQuality / 100;
+            const frameId = String(++nextFrameId);
 
             captureCanvas.toBlob((blob) => {
                 if (blob && isStreaming) {
-                    if (ackTimeoutId) clearTimeout(ackTimeoutId);
-                    ackTimeoutId = setTimeout(() => {
-                        ackTimeoutId = null;
-                        unackedFrames = Math.max(0, unackedFrames - 1);
+                    const ackTimeout = setTimeout(() => {
+                        pendingFrames.delete(frameId);
                     }, 1000);
+                    pendingFrames.set(frameId, ackTimeout);
 
                     socket.emit('frame', {
+                        frame_id: frameId,
                         image: blob,
+                        mime_type: encodeFormat,
                         timestamp: Date.now(),
                     });
 
                     // Update stats
                     const sizeKB = (blob.size / 1024).toFixed(1);
                     statsFrameSize.textContent = sizeKB + ' KB (' + encodeFormat.split('/')[1].toUpperCase() + ')';
-                } else {
-                    unackedFrames = Math.max(0, unackedFrames - 1);
                 }
 
                 scheduleNextFrame();
@@ -846,6 +953,8 @@
                 clearTimeout(frameTimeout);
                 frameTimeout = null;
             }
+            pendingFrames.forEach((timeoutId) => clearTimeout(timeoutId));
+            pendingFrames.clear();
 
             updateStreamUI(false);
             socket.emit('stream_state_change', { is_streaming: false });
@@ -911,6 +1020,8 @@
         // Camera select change
         cameraSelect.addEventListener('change', async () => {
             selectedDeviceId = cameraSelect.value;
+            currentLensMode = 'auto';
+            lensModeSelect.value = currentLensMode;
 
             const wasStreaming = isStreaming;
             if (isStreaming) stopStreaming();
@@ -918,6 +1029,20 @@
             await initCamera();
 
             if (wasStreaming) startStreaming();
+        });
+
+        lensModeSelect.addEventListener('change', async () => {
+            await switchLensMode(lensModeSelect.value);
+            socket.emit('cameras_updated', {
+                cameras: knownCameras.map((camera, index) => ({
+                    id: camera.deviceId,
+                    label: cameraDisplayLabel(camera, index),
+                    lens_type: isMacroCamera(camera) ? 'macro' : (isRearCamera(camera) ? 'rear' : 'standard'),
+                })),
+                active_camera: selectedDeviceId,
+                lens_mode: currentLensMode,
+                macro_available: knownCameras.some(isMacroCamera),
+            });
         });
 
         // Quality slider

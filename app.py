@@ -44,20 +44,29 @@ state_lock = threading.RLock()
 def generate_pin():
     return "".join(secrets.choice(string.digits) for _ in range(6))
 
-# Quality presets mapping
+# Quality presets mapping. JPEG quality is sent to the browser encoder; the
+# server still throttles FPS independently to protect the Socket.IO loop.
 QUALITY_PRESETS = {
-    '360p':  {'width': 480,  'height': 360},
-    '480p':  {'width': 640,  'height': 480},
-    '720p':  {'width': 1280, 'height': 720},
-    '1080p': {'width': 1920, 'height': 1080},
+    '360p':  {'width': 480,  'height': 360,  'jpeg_quality': 58},
+    '480p':  {'width': 640,  'height': 480,  'jpeg_quality': 68},
+    '720p':  {'width': 1280, 'height': 720,  'jpeg_quality': 82},
+    '1080p': {'width': 1920, 'height': 1080, 'jpeg_quality': 90},
+}
+
+SUPPORTED_SNAPSHOT_MIME_TYPES = {
+    'image/jpeg': ('jpg', 'image/jpeg'),
+    'image/png': ('png', 'image/png'),
+    'image/webp': ('webp', 'image/webp'),
 }
 
 app_state = {
     'mobile_connected': False,
     'dashboard_connected': False,
     'is_streaming': False,
-    'quality': '480p',
+    'quality': '720p',
     'fps': 15,
+    'jpeg_quality': QUALITY_PRESETS['720p']['jpeg_quality'],
+    'lens_mode': 'auto',
     'is_recording': False,
     'cameras': [],
     'active_camera': None,
@@ -79,6 +88,12 @@ recording_state = {
     'fps': 15,
     'last_frame': None
 }
+
+def _is_dashboard_client(sid):
+    return session_clients.get(sid) == 'dashboard'
+
+def _is_authenticated_mobile(sid):
+    return sid in authenticated_mobiles
 
 # ---------------------------------------------------------------------------
 # Utility functions
@@ -158,6 +173,19 @@ def generate_qr_code(url):
     img.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
     return f"data:image/png;base64,{img_str}"
+
+def normalize_image_mime(mime_type):
+    if not mime_type:
+        return 'image/jpeg'
+    mime_type = str(mime_type).split(';', 1)[0].strip().lower()
+    return mime_type if mime_type in SUPPORTED_SNAPSHOT_MIME_TYPES else 'image/jpeg'
+
+def snapshot_mimetype_for(filename):
+    ext = os.path.splitext(filename)[1].lower().lstrip('.')
+    for candidate_ext, mimetype in SUPPORTED_SNAPSHOT_MIME_TYPES.values():
+        if ext == candidate_ext:
+            return mimetype
+    return 'application/octet-stream'
 
 # ---------------------------------------------------------------------------
 # Storage limits
@@ -280,13 +308,14 @@ def _write_recording_frame(frame):
             print(f"[Recording] Frame write error: {e}")
 
 def _stop_recording():
+    cleanup_after_release = False
     with state_lock:
         if recording_state['writer'] is not None:
             recording_state['writer'].release()
             recording_state['writer'] = None
             duration = time.monotonic() - (recording_state['start_time'] or time.monotonic())
             print(f"[Recording] Stopped session {recording_state['session_id']} -- {recording_state['frame_count']} frames, {duration:.1f}s")
-            _enforce_storage_limit()
+            cleanup_after_release = True
         else:
             if recording_state['path'] and os.path.exists(recording_state['path']):
                 try: os.remove(recording_state['path'])
@@ -302,6 +331,9 @@ def _stop_recording():
 
         app_state['is_recording'] = False
         app_state['recording_session_id'] = None
+
+    if cleanup_after_release:
+        _enforce_storage_limit()
 
 # ---------------------------------------------------------------------------
 # API / Helpers
@@ -329,6 +361,10 @@ def api_health():
             'is_recording': app_state['is_recording'],
             'mobile_connected': app_state['mobile_connected'],
             'dashboard_connected': app_state['dashboard_connected'],
+            'quality': app_state['quality'],
+            'fps': app_state['fps'],
+            'jpeg_quality': app_state['jpeg_quality'],
+            'lens_mode': app_state['lens_mode'],
             'recordings_count': count,
             'disk_used_mb': size_mb
         }
@@ -431,7 +467,7 @@ def api_get_snapshot(date, filename):
     safe_date, safe_filename = os.path.basename(date), os.path.basename(filename)
     filepath = os.path.join(SNAPSHOTS_DIR, safe_date, safe_filename)
     if not os.path.isfile(filepath): abort(404)
-    return send_file(filepath, mimetype='image/jpeg')
+    return send_file(filepath, mimetype=snapshot_mimetype_for(safe_filename))
 
 @app.route('/api/snapshots/<date>/<filename>', methods=['DELETE'])
 def api_delete_snapshot(date, filename):
@@ -510,6 +546,13 @@ def on_disconnect():
 @socketio.on('frame')
 def handle_frame(data):
     sid = request.sid
+    if not data:
+        return
+
+    image_data = data.get('image')
+    if not image_data:
+        return
+
     with state_lock:
         if sid not in authenticated_mobiles:
             return
@@ -520,20 +563,21 @@ def handle_frame(data):
         if current_time - last_time < min_interval: return
         last_frame_times[sid] = current_time
 
-        image_data = data.get('image')
-        if not image_data: return
+        should_record = app_state['is_recording']
 
-        if app_state['is_recording']:
-            nparr = np.frombuffer(image_data, np.uint8)
-            frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            if frame is not None:
-                _write_recording_frame(frame)
+    if should_record:
+        nparr = np.frombuffer(image_data, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if frame is not None:
+            _write_recording_frame(frame)
 
-        emit('video_frame', data, to='dashboard_room')
+    emit('video_frame', data, to='dashboard_room')
 
 @socketio.on('frame_ack')
-def handle_frame_ack():
-    emit('frame_ack', to='mobile_room')
+def handle_frame_ack(data=None):
+    if not _is_dashboard_client(request.sid):
+        return
+    emit('frame_ack', data or {}, to='mobile_room')
 
 @socketio.on('stream_state_change')
 def handle_stream_state_change(data):
@@ -551,14 +595,20 @@ def handle_stream_state_change(data):
 
 @socketio.on('toggle_stream_request')
 def handle_toggle_stream_request(data):
+    if not _is_dashboard_client(request.sid):
+        return
     emit('toggle_stream', data, to='mobile_room', broadcast=True)
 
 @socketio.on('switch_camera_request')
 def handle_switch_camera_request(data=None):
+    if not _is_dashboard_client(request.sid):
+        return
     emit('switch_camera', to='mobile_room', broadcast=True)
 
 @socketio.on('select_camera_request')
 def handle_select_camera_request(data):
+    if not _is_dashboard_client(request.sid):
+        return
     emit('select_camera', data, to='mobile_room', broadcast=True)
 
 @socketio.on('cameras_updated')
@@ -568,22 +618,49 @@ def handle_cameras_updated(data):
         if sid not in authenticated_mobiles: return
         app_state['cameras'] = data.get('cameras', [])
         app_state['active_camera'] = data.get('active_camera', None)
+        if data.get('lens_mode') in {'auto', 'standard', 'macro'}:
+            app_state['lens_mode'] = data.get('lens_mode')
         print(f"[SocketIO] Cameras updated: {len(app_state['cameras'])} devices")
         emit('status_update', app_state, broadcast=True)
 
 @socketio.on('set_quality')
 def handle_set_quality(data):
+    if not _is_dashboard_client(request.sid):
+        return
+    data = data or {}
     quality = data.get('quality', '480p')
     if quality not in QUALITY_PRESETS: return
     with state_lock:
         app_state['quality'] = quality
         preset = QUALITY_PRESETS[quality]
+        app_state['jpeg_quality'] = preset['jpeg_quality']
         print(f"[SocketIO] Quality changed to {quality}")
-        emit('set_quality', {'quality': quality, 'width': preset['width'], 'height': preset['height']}, to='mobile_room', broadcast=True)
+        emit('set_quality', {
+            'quality': quality,
+            'width': preset['width'],
+            'height': preset['height'],
+            'jpeg_quality': preset['jpeg_quality'],
+        }, to='mobile_room', broadcast=True)
+        emit('status_update', app_state, broadcast=True)
+
+@socketio.on('set_lens_mode')
+def handle_set_lens_mode(data):
+    if not _is_dashboard_client(request.sid):
+        return
+    lens_mode = (data or {}).get('lens_mode', 'auto')
+    if lens_mode not in {'auto', 'standard', 'macro'}:
+        return
+    with state_lock:
+        app_state['lens_mode'] = lens_mode
+        print(f"[SocketIO] Lens mode changed to {lens_mode}")
+        emit('set_lens_mode', {'lens_mode': lens_mode}, to='mobile_room', broadcast=True)
         emit('status_update', app_state, broadcast=True)
 
 @socketio.on('set_fps')
 def handle_set_fps(data):
+    if not _is_dashboard_client(request.sid):
+        return
+    data = data or {}
     fps = data.get('fps', 15)
     if fps not in [10, 15, 30, 60]: return
     with state_lock:
@@ -594,6 +671,8 @@ def handle_set_fps(data):
 
 @socketio.on('start_recording')
 def handle_start_recording(data=None):
+    if not _is_dashboard_client(request.sid):
+        return
     with state_lock:
         if app_state['is_recording']: return
         _start_recording()
@@ -602,6 +681,8 @@ def handle_start_recording(data=None):
 
 @socketio.on('stop_recording')
 def handle_stop_recording(data=None):
+    if not _is_dashboard_client(request.sid):
+        return
     with state_lock:
         if not app_state['is_recording']: return
         _stop_recording()
@@ -610,35 +691,51 @@ def handle_stop_recording(data=None):
 
 @socketio.on('save_snapshot')
 def handle_save_snapshot(data):
+    if not _is_authenticated_mobile(request.sid):
+        return
     if not data or 'image' not in data: return
     try:
         image_bytes = data['image']
+        mime_type = normalize_image_mime(data.get('mime_type'))
+        extension, saved_mimetype = SUPPORTED_SNAPSHOT_MIME_TYPES[mime_type]
         snapshot_id = str(uuid.uuid4())[:8]
         date_str = datetime.now().strftime('%Y-%m-%d')
         folder = os.path.join(SNAPSHOTS_DIR, date_str)
         os.makedirs(folder, exist_ok=True)
-        filename = f"snapshot-{snapshot_id}.jpg"
+        filename = f"snapshot-{snapshot_id}.{extension}"
         filepath = os.path.join(folder, filename)
         with open(filepath, 'wb') as f:
             f.write(image_bytes)
         print(f"[Snapshot] Saved snapshot {snapshot_id} -> {filepath}")
-        emit('snapshot_saved', {'status': 'success', 'filename': filename, 'date': date_str}, to='dashboard_room', broadcast=True)
+        emit('snapshot_saved', {
+            'status': 'success',
+            'filename': filename,
+            'date': date_str,
+            'mime_type': saved_mimetype,
+        }, to='dashboard_room', broadcast=True)
     except Exception as e:
         print(f"[Snapshot] Save error: {e}")
 
 @socketio.on('request_highres_snapshot')
 def handle_request_highres_snapshot(data=None):
+    if not _is_dashboard_client(request.sid):
+        return
     print("[Snapshot] Dashboard requested high-res snapshot from mobile.")
     emit('take_highres_snapshot', to='mobile_room', broadcast=True)
 
 @socketio.on('capabilities_update')
 def handle_capabilities_update(data):
+    if not _is_authenticated_mobile(request.sid):
+        return
     print(f"[Capabilities] Syncing to dashboard: {data}")
     emit('capabilities_update', data, to='dashboard_room', broadcast=True)
 
 @socketio.on('hardware_control')
 def handle_hardware_control(data):
-    print(f"[Control] Dashboard requested hardware control: {data}")
+    sid = request.sid
+    if not (_is_dashboard_client(sid) or _is_authenticated_mobile(sid)):
+        return
+    print(f"[Control] Hardware control requested: {data}")
     emit('hardware_control', data, to='mobile_room', broadcast=True)
 
 # ---------------------------------------------------------------------------
