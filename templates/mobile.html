@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="fixed inset-0 overflow-hidden">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>DroidCam — Camera</title>
     <meta name="description" content="DroidCam mobile camera controller — stream your phone camera to PC">
 
@@ -86,10 +86,9 @@
         }
     </style>
 </head>
+<body class="fixed inset-0 overflow-hidden bg-darkBg text-gray-200 antialiased selection:bg-brandPurple/30">
 
-<body class="bg-darkBg text-white font-sans h-full overflow-hidden">
-
-    <!-- ===== PIN AUTH OVERLAY ===== -->
+    <!-- ===== Auth Overlay ===== -->
     <div id="pin-overlay" class="fixed inset-0 flex flex-col items-center justify-center bg-darkBg/95 z-50">
         <div class="w-full max-w-xs px-6 py-8 bg-darkCard border border-white/10 rounded-2xl text-center space-y-6 shadow-2xl">
             <div class="flex justify-center">
@@ -114,7 +113,7 @@
     </div>
 
     <!-- ===== ROOT LAYOUT — full-screen flex column ===== -->
-    <div id="app-root" class="flex flex-col h-[100dvh] w-full overflow-hidden bg-darkBg">
+    <div id="app-root" class="absolute inset-0 flex flex-col w-full h-full overflow-hidden bg-darkBg">
 
         <!-- ===== HEADER BAR ===== -->
         <header id="header-bar" class="flex items-center justify-between px-3 py-2 bg-darkCard/80 backdrop-blur-md border-b border-white/5 z-30 shrink-0">
@@ -139,7 +138,7 @@
         </header>
 
         <!-- ===== MAIN AREA — Camera Preview ===== -->
-        <main id="camera-area" class="relative flex-1 bg-black overflow-hidden">
+        <main id="camera-area" class="relative flex-1 min-h-0 bg-black overflow-hidden">
             <!-- Video Preview -->
             <video id="camera-preview" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
 
