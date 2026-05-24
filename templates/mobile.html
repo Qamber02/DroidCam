@@ -9,7 +9,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Tailwind CSS v3 -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,7 +24,7 @@
                         brandTeal: '#14b8a6',
                     },
                     fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                        sans: ['"Outfit"', 'system-ui', 'sans-serif'],
                     },
                 },
             },
@@ -106,7 +106,7 @@
             <div class="flex justify-center gap-2">
                 <input type="text" maxlength="6" pattern="\d{6}" inputmode="numeric" id="pin-input" class="w-48 tracking-[0.5em] text-center text-xl font-bold bg-darkBg border border-white/10 rounded-xl py-3 focus:outline-none focus:border-brandPurple focus:ring-1 focus:ring-brandPurple" placeholder="••••••">
             </div>
-            <button id="btn-auth-pin" class="w-full h-11 bg-brandPurple hover:bg-brandPurple/90 text-white font-semibold rounded-xl active:scale-95 transition-transform">
+            <button id="btn-auth-pin" class="w-full h-11 bg-brandPurple hover:bg-brandPurple/90 text-white font-semibold rounded-xl active:scale-95 transition-all hover-lift">
                 Connect Camera
             </button>
             <p id="pin-error" class="text-xs text-red-400 hidden">Incorrect PIN. Please try again.</p>
@@ -196,6 +196,20 @@
                     <span id="fps-display" class="text-xs text-gray-300 font-mono">15</span>
                     <span class="text-[10px] text-gray-500">(controlled remotely)</span>
                 </div>
+
+                <!-- Zoom slider (dynamic) -->
+                <div id="zoom-container" class="hidden items-center gap-2">
+                    <label for="zoom-slider" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Zoom</label>
+                    <input id="zoom-slider" type="range" class="flex-1">
+                    <span id="zoom-value" class="text-xs text-gray-400 font-mono w-8 text-right">1.0x</span>
+                </div>
+
+                <!-- Focus Mode (dynamic) -->
+                <div id="focus-container" class="hidden items-center gap-2">
+                    <label for="focus-select" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Focus</label>
+                    <select id="focus-select" class="flex-1 bg-darkBg border border-white/10 rounded-lg px-2.5 py-2 text-xs text-gray-200 focus:outline-none focus:border-brandPurple/50 appearance-none truncate">
+                    </select>
+                </div>
             </div>
 
             <!-- Action Buttons -->
@@ -221,7 +235,7 @@
                 </button>
 
                 <!-- Start / Stop Streaming -->
-                <button id="btn-stream" class="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl bg-brandPurple text-white font-semibold text-sm active:scale-95 transition-transform">
+                <button id="btn-stream" class="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl bg-brandPurple text-white font-semibold text-sm active:scale-95 transition-all hover-lift subtle-pulse">
                     <!-- Play icon -->
                     <svg id="icon-play" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M8 5v14l11-7z"/>
@@ -260,12 +274,19 @@
         let isStreaming = false;
         let frameTimeout = null;
         let selectedDeviceId = '';
-        let isProcessingFrame = false;
+        let unackedFrames = 0;
+        let ackTimeoutId = null;
         let currentQuality = '480p';
         let currentMaxWidth = 640;
         let currentMaxHeight = 480;
         let currentFps = 15;
         let currentJpegQuality = 45;
+
+        // WebP support detection
+        const testCanvas = document.createElement('canvas');
+        testCanvas.width = 1; testCanvas.height = 1;
+        const supportsWebP = testCanvas.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+        const encodeFormat = supportsWebP ? 'image/webp' : 'image/jpeg';
 
         // Hidden canvas for frame capture
         const captureCanvas = document.createElement('canvas');
@@ -306,7 +327,8 @@
         // ——————————————————————————————————
         // Socket
         // ——————————————————————————————————
-        const socket = io({ secure: true, rejectUnauthorized: false });
+        const isSecure = window.location.protocol === 'https:';
+        const socket = io({ secure: isSecure, rejectUnauthorized: false });
 
         socket.on('require_pin', () => {
             document.getElementById('pin-overlay').classList.remove('hidden');
@@ -417,6 +439,14 @@
             }
         });
 
+        socket.on('frame_ack', () => {
+            if (ackTimeoutId) {
+                clearTimeout(ackTimeoutId);
+                ackTimeoutId = null;
+            }
+            unackedFrames = Math.max(0, unackedFrames - 1);
+        });
+
         // ——————————————————————————————————
         // Camera Initialization
         // ——————————————————————————————————
@@ -462,6 +492,47 @@
                 });
 
                 await loadCameraDevices();
+
+                // Check for Advanced Capabilities (Zoom & Macro)
+                const track = localStream.getVideoTracks()[0];
+                if (track && track.getCapabilities) {
+                    const caps = track.getCapabilities();
+                    const settings = track.getSettings();
+                    
+                    const zoomContainer = document.getElementById('zoom-container');
+                    const zoomSlider = document.getElementById('zoom-slider');
+                    const zoomValue = document.getElementById('zoom-value');
+                    if (caps.zoom) {
+                        zoomSlider.min = caps.zoom.min;
+                        zoomSlider.max = caps.zoom.max;
+                        zoomSlider.step = caps.zoom.step || 0.1;
+                        zoomSlider.value = settings.zoom || 1.0;
+                        zoomValue.textContent = Number(zoomSlider.value).toFixed(1) + 'x';
+                        zoomContainer.classList.remove('hidden');
+                        zoomContainer.classList.add('flex');
+                    } else {
+                        zoomContainer.classList.add('hidden');
+                        zoomContainer.classList.remove('flex');
+                    }
+                    
+                    const focusContainer = document.getElementById('focus-container');
+                    const focusSelect = document.getElementById('focus-select');
+                    if (caps.focusMode) {
+                        focusSelect.innerHTML = '';
+                        caps.focusMode.forEach(mode => {
+                            const opt = document.createElement('option');
+                            opt.value = mode;
+                            opt.textContent = mode;
+                            if (mode === settings.focusMode) opt.selected = true;
+                            focusSelect.appendChild(opt);
+                        });
+                        focusContainer.classList.remove('hidden');
+                        focusContainer.classList.add('flex');
+                    } else {
+                        focusContainer.classList.add('hidden');
+                        focusContainer.classList.remove('flex');
+                    }
+                }
             } catch (err) {
                 console.error('Camera init error:', err);
                 loadingOverlay.classList.add('hidden');
@@ -551,7 +622,7 @@
 
             if (!isStreaming) return;
 
-            if (isProcessingFrame) {
+            if (unackedFrames >= 1) {
                 scheduleNextFrame();
                 return;
             }
@@ -561,28 +632,39 @@
                 return;
             }
 
-            isProcessingFrame = true;
+            unackedFrames++;
 
             const vw = video.videoWidth;
             const vh = video.videoHeight;
 
             // Scale to fit within max dimensions keeping aspect ratio
-            let drawW = vw;
-            let drawH = vh;
-            const scaleW = currentMaxWidth / vw;
-            const scaleH = currentMaxHeight / vh;
+            let maxW = currentMaxWidth;
+            let maxH = currentMaxHeight;
+            if (vh > vw) {
+                // Video is portrait, swap max dimensions
+                maxW = currentMaxHeight;
+                maxH = currentMaxWidth;
+            }
+            const scaleW = maxW / vw;
+            const scaleH = maxH / vh;
             const scale = Math.min(scaleW, scaleH, 1); // never upscale
-            drawW = Math.round(vw * scale);
-            drawH = Math.round(vh * scale);
+            let drawW = Math.round(vw * scale);
+            let drawH = Math.round(vh * scale);
 
             captureCanvas.width = drawW;
             captureCanvas.height = drawH;
             captureCtx.drawImage(video, 0, 0, drawW, drawH);
 
-            const jpegQual = currentJpegQuality / 100;
+            const qual = currentJpegQuality / 100;
 
             captureCanvas.toBlob((blob) => {
                 if (blob && isStreaming) {
+                    if (ackTimeoutId) clearTimeout(ackTimeoutId);
+                    ackTimeoutId = setTimeout(() => {
+                        ackTimeoutId = null;
+                        unackedFrames = Math.max(0, unackedFrames - 1);
+                    }, 1000);
+
                     socket.emit('frame', {
                         image: blob,
                         timestamp: Date.now(),
@@ -590,12 +672,13 @@
 
                     // Update stats
                     const sizeKB = (blob.size / 1024).toFixed(1);
-                    statsFrameSize.textContent = sizeKB + ' KB';
+                    statsFrameSize.textContent = sizeKB + ' KB (' + encodeFormat.split('/')[1].toUpperCase() + ')';
+                } else {
+                    unackedFrames = Math.max(0, unackedFrames - 1);
                 }
 
-                isProcessingFrame = false;
                 scheduleNextFrame();
-            }, 'image/jpeg', jpegQual);
+            }, encodeFormat, qual);
         }
 
         function scheduleNextFrame() {
@@ -734,6 +817,36 @@
                 startStreaming();
             }
         });
+
+        // Zoom slider UI event
+        const zoomSlider = document.getElementById('zoom-slider');
+        const zoomValue = document.getElementById('zoom-value');
+        if (zoomSlider) {
+            zoomSlider.addEventListener('input', async (e) => {
+                const val = parseFloat(e.target.value);
+                zoomValue.textContent = val.toFixed(1) + 'x';
+                if (localStream) {
+                    const track = localStream.getVideoTracks()[0];
+                    try {
+                        await track.applyConstraints({ advanced: [{ zoom: val }] });
+                    } catch (err) { console.warn('Zoom constraint failed', err); }
+                }
+            });
+        }
+
+        // Focus Mode UI event
+        const focusSelect = document.getElementById('focus-select');
+        if (focusSelect) {
+            focusSelect.addEventListener('change', async (e) => {
+                const mode = e.target.value;
+                if (localStream) {
+                    const track = localStream.getVideoTracks()[0];
+                    try {
+                        await track.applyConstraints({ advanced: [{ focusMode: mode }] });
+                    } catch (err) { console.warn('FocusMode constraint failed', err); }
+                }
+            });
+        }
 
         // ——————————————————————————————————
         // Init

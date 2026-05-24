@@ -531,6 +531,10 @@ def handle_frame(data):
 
         emit('video_frame', data, to='dashboard_room')
 
+@socketio.on('frame_ack')
+def handle_frame_ack():
+    emit('frame_ack', to='mobile_room')
+
 @socketio.on('stream_state_change')
 def handle_stream_state_change(data):
     sid = request.sid
@@ -639,6 +643,11 @@ if __name__ == '__main__':
         for ip in local_ips[1:]: print(f"   - https://{ip}:{PORT}/mobile")
     print(f" Recordings directory: {RECORDINGS_DIR}")
     print("=" * 60 + "\n")
+    import sys
+    if '--http' in sys.argv:
+        print("[INFO] Starting in HTTP mode (SSL disabled).")
+        cert, key = None, None
+        
     if cert and key:
         socketio.run(app, host='0.0.0.0', port=PORT, certfile=cert, keyfile=key)
     else:

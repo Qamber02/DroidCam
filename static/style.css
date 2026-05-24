@@ -270,3 +270,33 @@ button {
     border-radius: 9999px;
     letter-spacing: 0.025em;
 }
+
+/* ─── Premium UI Extensions ─── */
+.hover-lift {
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.4);
+}
+
+.premium-gradient-text {
+    background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 50%, #2dd4bf 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.subtle-pulse {
+    animation: subtlePulse 4s infinite alternate;
+}
+
+@keyframes subtlePulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+    }
+    100% {
+        box-shadow: 0 0 15px 0 rgba(99, 102, 241, 0.15);
+    }
+}
