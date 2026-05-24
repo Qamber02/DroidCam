@@ -210,6 +210,13 @@
                     <select id="focus-select" class="flex-1 bg-darkBg border border-white/10 rounded-lg px-2.5 py-2 text-xs text-gray-200 focus:outline-none focus:border-brandPurple/50 appearance-none truncate">
                     </select>
                 </div>
+
+                <!-- Exposure Compensation (dynamic) -->
+                <div id="exposure-container" class="hidden items-center gap-2">
+                    <label for="exposure-slider" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Exposure</label>
+                    <input id="exposure-slider" type="range" class="flex-1">
+                    <span id="exposure-value" class="text-xs text-gray-400 font-mono w-8 text-right">0</span>
+                </div>
             </div>
 
             <!-- Action Buttons -->
@@ -276,6 +283,7 @@
         let selectedDeviceId = '';
         let unackedFrames = 0;
         let ackTimeoutId = null;
+        let imageCapture = null;
         let currentQuality = '480p';
         let currentMaxWidth = 640;
         let currentMaxHeight = 480;
@@ -447,6 +455,27 @@
             unackedFrames = Math.max(0, unackedFrames - 1);
         });
 
+        socket.on('take_highres_snapshot', async () => {
+            if (imageCapture) {
+                try {
+                    const photoBlob = await imageCapture.takePhoto();
+                    socket.emit('save_snapshot', {
+                        image: photoBlob,
+                        timestamp: Date.now()
+                    });
+                } catch (err) {
+                    console.error('High-res snapshot failed, falling back to canvas:', err);
+                    captureCanvas.toBlob((blob) => {
+                        socket.emit('save_snapshot', { image: blob, timestamp: Date.now() });
+                    }, 'image/jpeg', 0.95);
+                }
+            } else {
+                captureCanvas.toBlob((blob) => {
+                    socket.emit('save_snapshot', { image: blob, timestamp: Date.now() });
+                }, 'image/jpeg', 0.95);
+            }
+        });
+
         // ——————————————————————————————————
         // Camera Initialization
         // ——————————————————————————————————
@@ -464,8 +493,8 @@
 
             const constraints = {
                 video: {
-                    width:  { ideal: currentMaxWidth },
-                    height: { ideal: currentMaxHeight },
+                    width:  { ideal: 4096 },
+                    height: { ideal: 4096 },
                     facingMode: 'environment',
                 },
                 audio: false,
@@ -493,8 +522,15 @@
 
                 await loadCameraDevices();
 
-                // Check for Advanced Capabilities (Zoom & Macro)
+                // Check for Advanced Capabilities (Zoom, Macro, Exposure)
                 const track = localStream.getVideoTracks()[0];
+                
+                if (window.ImageCapture) {
+                    imageCapture = new ImageCapture(track);
+                } else {
+                    imageCapture = null;
+                }
+
                 if (track && track.getCapabilities) {
                     const caps = track.getCapabilities();
                     const settings = track.getSettings();
@@ -531,6 +567,22 @@
                     } else {
                         focusContainer.classList.add('hidden');
                         focusContainer.classList.remove('flex');
+                    }
+
+                    const expContainer = document.getElementById('exposure-container');
+                    const expSlider = document.getElementById('exposure-slider');
+                    const expValue = document.getElementById('exposure-value');
+                    if (caps.exposureCompensation) {
+                        expSlider.min = caps.exposureCompensation.min;
+                        expSlider.max = caps.exposureCompensation.max;
+                        expSlider.step = caps.exposureCompensation.step || 0.1;
+                        expSlider.value = settings.exposureCompensation || 0;
+                        expValue.textContent = Number(expSlider.value).toFixed(1);
+                        expContainer.classList.remove('hidden');
+                        expContainer.classList.add('flex');
+                    } else {
+                        expContainer.classList.add('hidden');
+                        expContainer.classList.remove('flex');
                     }
                 }
             } catch (err) {
@@ -844,6 +896,22 @@
                     try {
                         await track.applyConstraints({ advanced: [{ focusMode: mode }] });
                     } catch (err) { console.warn('FocusMode constraint failed', err); }
+                }
+            });
+        }
+
+        // Exposure Compensation UI event
+        const expSlider = document.getElementById('exposure-slider');
+        const expValue = document.getElementById('exposure-value');
+        if (expSlider) {
+            expSlider.addEventListener('input', async (e) => {
+                const val = parseFloat(e.target.value);
+                expValue.textContent = val.toFixed(1);
+                if (localStream) {
+                    const track = localStream.getVideoTracks()[0];
+                    try {
+                        await track.applyConstraints({ advanced: [{ exposureCompensation: val }] });
+                    } catch (err) { console.warn('Exposure constraint failed', err); }
                 }
             });
         }

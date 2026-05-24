@@ -1036,65 +1036,13 @@
 
     // ────────────────────── Take Snapshot ──────────────────────
     function takeSnapshot() {
-      if (!isStreaming) {
+      if (!isStreaming || !prevBlobUrl) {
         showToast('Cannot take snapshot: Stream is offline', 'error');
         return;
       }
-
-      const img = document.getElementById('live-stream');
-      if (img.classList.contains('hidden')) {
-        showToast('No active video feed', 'error');
-        return;
-      }
-
-      // Create a canvas to grab the current image frame
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      const width = img.naturalWidth || img.width;
-      const height = img.naturalHeight || img.height;
-
-      // Swap canvas dimensions if rotated 90 or 270 degrees
-      if (rotation === 90 || rotation === 270) {
-        canvas.width = height;
-        canvas.height = width;
-      } else {
-        canvas.width = width;
-        canvas.height = height;
-      }
-
-      // Rotate canvas drawing coordinates around the center
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate((rotation * Math.PI) / 180);
-      ctx.drawImage(img, -width / 2, -height / 2, width, height);
-
-      // Convert to blob
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          showToast('Failed to capture frame', 'error');
-          return;
-        }
-
-        // 1. Direct browser download for instant feedback
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `snapshot-${Date.now()}.jpg`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        // 2. Upload snapshot to server via SocketIO
-        socket.emit('save_snapshot', {
-          image: blob,
-          timestamp: Date.now()
-        });
-
-        // Visual feedback (white flash)
-        showCameraFlash();
-        showToast('Capturing snapshot...', 'info');
-      }, 'image/jpeg', 0.95);
+      showToast('Requesting high-res snapshot from mobile...', 'info');
+      socket.emit('request_highres_snapshot');
+      showCameraFlash();
     }
 
     function showCameraFlash() {

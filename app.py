@@ -626,6 +626,11 @@ def handle_save_snapshot(data):
     except Exception as e:
         print(f"[Snapshot] Save error: {e}")
 
+@socketio.on('request_highres_snapshot')
+def handle_request_highres_snapshot(data=None):
+    print("[Snapshot] Dashboard requested high-res snapshot from mobile.")
+    emit('take_highres_snapshot', to='mobile_room', broadcast=True)
+
 # ---------------------------------------------------------------------------
 # Server startup
 # ---------------------------------------------------------------------------
