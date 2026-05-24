@@ -169,7 +169,7 @@
         </main>
 
         <!-- ===== FOOTER — Settings & Actions ===== -->
-        <footer id="footer-panel" class="bg-darkCard/90 backdrop-blur-md border-t border-white/5 z-30 shrink-0">
+        <footer id="footer-panel" class="absolute bottom-4 inset-x-4 bg-[#1a1c29]/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] z-30 shrink-0 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col">
 
             <!-- Settings Panel -->
             <div id="settings-panel" class="px-4 pt-3 pb-2 space-y-3 max-h-[35vh] overflow-y-auto">
@@ -645,20 +645,17 @@
                     }
 
                     const btnFlash = document.getElementById('btn-flash');
-                    if (caps.torch) {
-                        btnFlash.classList.remove('hidden');
-                        isFlashOn = settings.torch || false;
-                        updateFlashUI();
-                    } else {
-                        btnFlash.classList.add('hidden');
-                    }
+                    // Force show flash button since some browsers hide the torch capability until requested
+                    btnFlash.classList.remove('hidden');
+                    isFlashOn = settings.torch || false;
+                    updateFlashUI();
 
                     // Sync capabilities back to the PC dashboard
                     socket.emit('capabilities_update', {
                         zoom: caps.zoom ? { min: caps.zoom.min, max: caps.zoom.max, step: caps.zoom.step, current: settings.zoom } : null,
                         focusMode: caps.focusMode ? { options: caps.focusMode, current: settings.focusMode } : null,
                         exposureCompensation: caps.exposureCompensation ? { min: caps.exposureCompensation.min, max: caps.exposureCompensation.max, step: caps.exposureCompensation.step, current: settings.exposureCompensation } : null,
-                        torch: caps.torch ? { current: isFlashOn } : null
+                        torch: true // Force true to show on Dashboard
                     });
                 } else {
                     // Send null capabilities if track capabilities are unavailable
@@ -753,7 +750,8 @@
 
             if (!isStreaming) return;
 
-            if (unackedFrames >= 1) {
+            // Allow up to 3 frames in-flight to absorb network jitter without stuttering
+            if (unackedFrames >= 3) {
                 scheduleNextFrame();
                 return;
             }
