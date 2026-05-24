@@ -476,6 +476,32 @@
             }
         });
 
+        socket.on('hardware_control', async (data) => {
+            if (!localStream) return;
+            const track = localStream.getVideoTracks()[0];
+            try {
+                const constraint = {};
+                constraint[data.type] = data.value;
+                await track.applyConstraints({ advanced: [constraint] });
+                
+                // Update local UI
+                if (data.type === 'zoom') {
+                    const zoomSlider = document.getElementById('zoom-slider');
+                    const zoomValue = document.getElementById('zoom-value');
+                    if (zoomSlider) { zoomSlider.value = data.value; zoomValue.textContent = Number(data.value).toFixed(1) + 'x'; }
+                } else if (data.type === 'focusMode') {
+                    const focusSelect = document.getElementById('focus-select');
+                    if (focusSelect) focusSelect.value = data.value;
+                } else if (data.type === 'exposureCompensation') {
+                    const expSlider = document.getElementById('exposure-slider');
+                    const expValue = document.getElementById('exposure-value');
+                    if (expSlider) { expSlider.value = data.value; expValue.textContent = Number(data.value).toFixed(1); }
+                }
+            } catch (err) {
+                console.error('Hardware control failed:', err);
+            }
+        });
+
         // ——————————————————————————————————
         // Camera Initialization
         // ——————————————————————————————————
@@ -584,6 +610,16 @@
                         expContainer.classList.add('hidden');
                         expContainer.classList.remove('flex');
                     }
+
+                    // Sync capabilities back to the PC dashboard
+                    socket.emit('capabilities_update', {
+                        zoom: caps.zoom ? { min: caps.zoom.min, max: caps.zoom.max, step: caps.zoom.step, current: settings.zoom } : null,
+                        focusMode: caps.focusMode ? { options: caps.focusMode, current: settings.focusMode } : null,
+                        exposureCompensation: caps.exposureCompensation ? { min: caps.exposureCompensation.min, max: caps.exposureCompensation.max, step: caps.exposureCompensation.step, current: settings.exposureCompensation } : null
+                    });
+                } else {
+                    // Send null capabilities if track capabilities are unavailable
+                    socket.emit('capabilities_update', { zoom: null, focusMode: null, exposureCompensation: null });
                 }
             } catch (err) {
                 console.error('Camera init error:', err);

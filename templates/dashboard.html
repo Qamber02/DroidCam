@@ -269,10 +269,27 @@
                       <option value="">No cameras</option>
                     </select>
                   </div>
-                  <!-- Zoom Slider -->
-                  <div class="flex flex-col ml-3 mr-2">
-                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Zoom</span>
-                    <input type="range" id="ctrl-zoom" min="0.5" max="3" step="0.1" value="1" class="w-20 h-[5px] mt-1.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
+                  <!-- Hardware Zoom Slider -->
+                  <div id="hw-zoom-container" class="hidden flex-col ml-3">
+                    <div class="flex justify-between items-center mb-0.5">
+                      <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold toolbar-label">Zoom</span>
+                      <span id="hw-zoom-value" class="text-[9px] font-mono text-gray-400">1.0x</span>
+                    </div>
+                    <input type="range" id="hw-zoom" step="0.1" value="1" class="w-20 h-[5px] mt-0.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
+                  </div>
+                  <!-- Hardware Focus Mode -->
+                  <div id="hw-focus-container" class="hidden flex-col ml-2">
+                    <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold mb-0.5 toolbar-label">Focus</span>
+                    <select id="hw-focus" class="bg-gray-800/80 border border-gray-700/50 text-gray-300 text-[11px] font-semibold rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-purple pr-6 cursor-pointer">
+                    </select>
+                  </div>
+                  <!-- Hardware Exposure -->
+                  <div id="hw-exposure-container" class="hidden flex-col ml-2 mr-2">
+                    <div class="flex justify-between items-center mb-0.5">
+                      <span class="text-[9px] uppercase tracking-wider text-gray-500 font-semibold toolbar-label">Exposure</span>
+                      <span id="hw-exposure-value" class="text-[9px] font-mono text-gray-400">0.0</span>
+                    </div>
+                    <input type="range" id="hw-exposure" step="0.1" value="0" class="w-20 h-[5px] mt-0.5 bg-gray-600 rounded-full appearance-none cursor-pointer focus:outline-none">
                   </div>
                 </div>
                 <!-- Right controls -->
@@ -480,7 +497,6 @@
     // ────────────────────── State ──────────────────────
     let isStreaming = false;
     let isRecording = false;
-    let currentZoom = 1;
     let currentTab = 'livestream';
     let currentPairTab = 'wifi';
     let recTimerInterval = null;
@@ -559,6 +575,59 @@
         }
       } else {
         showToast('Failed to save snapshot to server', 'error');
+      }
+    });
+
+    socket.on('capabilities_update', (caps) => {
+      // Zoom
+      const zoomContainer = document.getElementById('hw-zoom-container');
+      if (caps.zoom) {
+        const slider = document.getElementById('hw-zoom');
+        slider.min = caps.zoom.min;
+        slider.max = caps.zoom.max;
+        slider.step = caps.zoom.step || 0.1;
+        slider.value = caps.zoom.current || 1.0;
+        document.getElementById('hw-zoom-value').textContent = Number(slider.value).toFixed(1) + 'x';
+        zoomContainer.classList.remove('hidden');
+        zoomContainer.classList.add('flex');
+      } else {
+        zoomContainer.classList.add('hidden');
+        zoomContainer.classList.remove('flex');
+      }
+
+      // Focus
+      const focusContainer = document.getElementById('hw-focus-container');
+      if (caps.focusMode) {
+        const select = document.getElementById('hw-focus');
+        select.innerHTML = '';
+        caps.focusMode.options.forEach(mode => {
+          const opt = document.createElement('option');
+          opt.value = mode;
+          opt.textContent = mode;
+          if (mode === caps.focusMode.current) opt.selected = true;
+          select.appendChild(opt);
+        });
+        focusContainer.classList.remove('hidden');
+        focusContainer.classList.add('flex');
+      } else {
+        focusContainer.classList.add('hidden');
+        focusContainer.classList.remove('flex');
+      }
+
+      // Exposure
+      const expContainer = document.getElementById('hw-exposure-container');
+      if (caps.exposureCompensation) {
+        const slider = document.getElementById('hw-exposure');
+        slider.min = caps.exposureCompensation.min;
+        slider.max = caps.exposureCompensation.max;
+        slider.step = caps.exposureCompensation.step || 0.1;
+        slider.value = caps.exposureCompensation.current || 0;
+        document.getElementById('hw-exposure-value').textContent = Number(slider.value).toFixed(1);
+        expContainer.classList.remove('hidden');
+        expContainer.classList.add('flex');
+      } else {
+        expContainer.classList.add('hidden');
+        expContainer.classList.remove('flex');
       }
     });
 
@@ -1026,8 +1095,8 @@
         img.className = "absolute object-" + fitMode;
       }
 
-      if (currentZoom !== 1 || baseTransform) {
-        img.style.transform = baseTransform + (currentZoom !== 1 ? `scale(${currentZoom})` : '');
+      if (baseTransform) {
+        img.style.transform = baseTransform;
       }
     }
 
@@ -1056,9 +1125,18 @@
       }, 150);
     }
 
-    document.getElementById('ctrl-zoom').addEventListener('input', (e) => {
-      currentZoom = parseFloat(e.target.value);
-      updateVideoStyles();
+    document.getElementById('hw-zoom').addEventListener('input', (e) => {
+      document.getElementById('hw-zoom-value').textContent = Number(e.target.value).toFixed(1) + 'x';
+      socket.emit('hardware_control', { type: 'zoom', value: parseFloat(e.target.value) });
+    });
+
+    document.getElementById('hw-focus').addEventListener('change', (e) => {
+      socket.emit('hardware_control', { type: 'focusMode', value: e.target.value });
+    });
+
+    document.getElementById('hw-exposure').addEventListener('input', (e) => {
+      document.getElementById('hw-exposure-value').textContent = Number(e.target.value).toFixed(1);
+      socket.emit('hardware_control', { type: 'exposureCompensation', value: parseFloat(e.target.value) });
     });
 
     // ────────────────────── Glassmorphic Toast Notification ──────────────────────

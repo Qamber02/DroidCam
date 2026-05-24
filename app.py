@@ -631,6 +631,16 @@ def handle_request_highres_snapshot(data=None):
     print("[Snapshot] Dashboard requested high-res snapshot from mobile.")
     emit('take_highres_snapshot', to='mobile_room', broadcast=True)
 
+@socketio.on('capabilities_update')
+def handle_capabilities_update(data):
+    print(f"[Capabilities] Syncing to dashboard: {data}")
+    emit('capabilities_update', data, to='dashboard_room', broadcast=True)
+
+@socketio.on('hardware_control')
+def handle_hardware_control(data):
+    print(f"[Control] Dashboard requested hardware control: {data}")
+    emit('hardware_control', data, to='mobile_room', broadcast=True)
+
 # ---------------------------------------------------------------------------
 # Server startup
 # ---------------------------------------------------------------------------
