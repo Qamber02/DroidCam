@@ -137,43 +137,10 @@
             </div>
         </header>
 
-        <!-- ===== MAIN AREA — Camera Preview ===== -->
-        <main id="camera-area" class="relative flex-1 min-h-0 bg-black overflow-hidden w-full">
-            <!-- Video Preview -->
-            <video id="camera-preview" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
-
-            <!-- Loading Spinner Overlay -->
-            <div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-darkBg/80 z-10">
-                <svg class="w-10 h-10 text-brandPurple animate-spin-slow" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="50 20" />
-                </svg>
-                <span class="mt-3 text-xs text-gray-400 font-medium">Initializing camera…</span>
-            </div>
-
-            <!-- Error Overlay -->
-            <div id="error-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-darkBg/90 z-10 hidden">
-                <svg class="w-12 h-12 text-red-400 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                <span id="error-title" class="text-sm font-semibold text-red-300 mb-1">Camera Error</span>
-                <span id="error-message" class="text-xs text-gray-400 text-center px-8 leading-relaxed">Unable to access camera. Please grant camera permissions and reload.</span>
-            </div>
-
-            <!-- Stats Overlay (bottom-left) -->
-            <div id="stats-overlay" class="absolute bottom-3 left-3 flex flex-col gap-0.5 bg-black/60 backdrop-blur-sm rounded-lg px-2.5 py-1.5 z-10 hidden">
-                <span id="stats-resolution" class="text-[10px] font-mono text-gray-300">—</span>
-                <span id="stats-frame-size" class="text-[10px] font-mono text-gray-400">—</span>
-            </div>
-        </main>
-
-        <!-- ===== FOOTER — Settings & Actions ===== -->
-        <footer id="footer-panel" class="absolute bottom-[calc(0.75rem+env(safe-area-inset-bottom))] inset-x-3 sm:inset-x-6 md:inset-x-12 bg-[#1a1c29]/85 backdrop-blur-3xl border border-white/10 rounded-[2rem] z-30 shrink-0 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
-
+        <!-- ===== CONTROL PANEL — Settings & Actions ===== -->
+        <div id="control-panel" class="bg-[#1a1c29] border-b border-white/10 z-30 shrink-0 flex flex-col">
             <!-- Settings Panel -->
-            <div id="settings-panel" class="px-4 sm:px-6 pt-4 pb-2 space-y-3.5 max-h-[40vh] overflow-y-auto">
-
+            <div id="settings-panel" class="px-4 sm:px-6 pt-3 pb-2 space-y-3 max-h-[35vh] overflow-y-auto">
                 <!-- Camera selector -->
                 <div class="flex items-center gap-3">
                     <label for="camera-select" class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">Camera</label>
@@ -219,10 +186,10 @@
             </div>
 
             <!-- Action Buttons -->
-            <div id="action-buttons" class="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 pb-4 pt-2">
+            <div id="action-buttons" class="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 pb-3 pt-1">
                 <div class="flex items-center gap-2 shrink-0">
                     <!-- Refresh Devices -->
-                    <button id="btn-refresh" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform hover:text-white" title="Refresh devices">
+                    <button id="btn-refresh" class="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform hover:text-white" title="Refresh devices">
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="23 4 23 10 17 10"/>
                             <polyline points="1 20 1 14 7 14"/>
@@ -232,7 +199,7 @@
                     </button>
 
                     <!-- Flip Camera -->
-                    <button id="btn-flip" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform hover:text-white" title="Flip camera">
+                    <button id="btn-flip" class="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform hover:text-white" title="Flip camera">
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M16 3h5v5"/>
                             <path d="M8 21H3v-5"/>
@@ -242,27 +209,56 @@
                     </button>
 
                     <!-- Toggle Flash -->
-                    <button id="btn-flash" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-colors hidden" title="Toggle Flash">
+                    <button id="btn-flash" class="shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-colors hidden" title="Toggle Flash">
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
                         </svg>
                     </button>
                 </div>
 
-                <!-- Start / Stop Streaming -->
-                <button id="btn-stream" class="flex-1 min-w-[140px] h-11 flex items-center justify-center gap-2 rounded-2xl bg-brandPurple text-white font-semibold text-sm active:scale-95 transition-all shadow-[0_4px_20px_-5px_rgba(99,102,241,0.5)]">
-                    <!-- Play icon -->
-                    <svg id="icon-play" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <!-- Stream Toggle -->
+                <button id="btn-stream" class="flex-1 min-w-[120px] h-10 flex items-center justify-center gap-2 rounded-xl bg-brandPurple text-white font-semibold text-sm active:scale-95 transition-all shadow-sm">
+                    <svg id="icon-play" class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M8 5v14l11-7z"/>
                     </svg>
-                    <!-- Stop icon (hidden by default) -->
-                    <svg id="icon-stop" class="w-5 h-5 hidden shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <svg id="icon-stop" class="w-4 h-4 hidden shrink-0" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M6 6h12v12H6z"/>
                     </svg>
                     <span id="btn-stream-label" class="truncate">Start Stream</span>
                 </button>
             </div>
-        </footer>
+        </div>
+
+        <!-- ===== MAIN AREA — Camera Preview ===== -->
+        <main id="camera-area" class="relative flex-1 min-h-0 bg-black overflow-hidden w-full rounded-t-3xl sm:rounded-t-[2.5rem]">
+            <!-- Video Preview -->
+            <video id="camera-preview" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+
+            <!-- Loading Spinner Overlay -->
+            <div id="loading-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-darkBg/80 z-10">
+                <svg class="w-10 h-10 text-brandPurple animate-spin-slow" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="50 20" />
+                </svg>
+                <span class="mt-3 text-xs text-gray-400 font-medium">Initializing camera…</span>
+            </div>
+
+            <!-- Error Overlay -->
+            <div id="error-overlay" class="absolute inset-0 flex flex-col items-center justify-center bg-darkBg/90 z-10 hidden">
+                <svg class="w-12 h-12 text-red-400 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span id="error-title" class="text-sm font-semibold text-red-300 mb-1">Camera Error</span>
+                <span id="error-message" class="text-xs text-gray-400 text-center px-8 leading-relaxed">Unable to access camera. Please grant camera permissions and reload.</span>
+            </div>
+
+            <!-- Stats Overlay (bottom-left) -->
+            <div id="stats-overlay" class="absolute bottom-3 left-3 flex flex-col gap-0.5 bg-black/60 backdrop-blur-sm rounded-lg px-2.5 py-1.5 z-10 hidden">
+                <span id="stats-resolution" class="text-[10px] font-mono text-gray-300">—</span>
+                <span id="stats-frame-size" class="text-[10px] font-mono text-gray-400">—</span>
+            </div>
+        </main>
     </div>
 
     <!-- ===== SocketIO ===== -->
