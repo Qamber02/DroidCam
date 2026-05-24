@@ -116,29 +116,29 @@
     <div id="app-root" class="absolute inset-0 flex flex-col w-full h-full overflow-hidden bg-darkBg">
 
         <!-- ===== HEADER BAR ===== -->
-        <header id="header-bar" class="flex items-center justify-between px-3 py-2 bg-darkCard/80 backdrop-blur-md border-b border-white/5 z-30 shrink-0">
+        <header id="header-bar" class="flex flex-wrap items-center justify-between px-3 py-2 bg-darkCard/80 backdrop-blur-md border-b border-white/5 z-30 shrink-0 gap-2">
             <!-- Left: Socket Status -->
-            <div id="socket-status" class="flex items-center gap-1.5">
-                <span id="socket-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse-dot"></span>
-                <span id="socket-label" class="text-xs font-medium text-gray-400">Connecting...</span>
+            <div id="socket-status" class="flex items-center gap-1.5 shrink-0">
+                <span id="socket-dot" class="w-2 h-2 rounded-full bg-red-500 animate-pulse-dot shrink-0"></span>
+                <span id="socket-label" class="text-xs font-medium text-gray-400 truncate">Connecting...</span>
             </div>
 
             <!-- Right: Badges -->
-            <div class="flex items-center gap-1.5">
+            <div class="flex flex-wrap items-center justify-end gap-1.5 flex-1 min-w-0">
                 <!-- Stream Indicator -->
-                <span id="stream-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-gray-700/60 text-gray-400">
-                    <span id="stream-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500"></span>
-                    <span id="stream-label">Standby</span>
+                <span id="stream-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-gray-700/60 text-gray-400 shrink-0">
+                    <span id="stream-dot" class="w-1.5 h-1.5 rounded-full bg-gray-500 shrink-0"></span>
+                    <span id="stream-label" class="whitespace-nowrap">Standby</span>
                 </span>
                 <!-- Quality Badge -->
-                <span id="quality-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brandPurple/20 text-brandPurple">480p</span>
+                <span id="quality-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brandPurple/20 text-brandPurple shrink-0 whitespace-nowrap">480p</span>
                 <!-- FPS Badge -->
-                <span id="fps-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brandTeal/20 text-brandTeal">15 FPS</span>
+                <span id="fps-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-brandTeal/20 text-brandTeal shrink-0 whitespace-nowrap">15 FPS</span>
             </div>
         </header>
 
         <!-- ===== MAIN AREA — Camera Preview ===== -->
-        <main id="camera-area" class="relative flex-1 min-h-0 bg-black overflow-hidden">
+        <main id="camera-area" class="relative flex-1 min-h-0 bg-black overflow-hidden w-full">
             <!-- Video Preview -->
             <video id="camera-preview" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
 
@@ -169,95 +169,97 @@
         </main>
 
         <!-- ===== FOOTER — Settings & Actions ===== -->
-        <footer id="footer-panel" class="absolute bottom-4 inset-x-4 bg-[#1a1c29]/80 backdrop-blur-2xl border border-white/10 rounded-[2rem] z-30 shrink-0 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col">
+        <footer id="footer-panel" class="absolute bottom-[calc(0.75rem+env(safe-area-inset-bottom))] inset-x-3 sm:inset-x-6 md:inset-x-12 bg-[#1a1c29]/85 backdrop-blur-3xl border border-white/10 rounded-[2rem] z-30 shrink-0 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
 
             <!-- Settings Panel -->
-            <div id="settings-panel" class="px-4 pt-3 pb-2 space-y-3 max-h-[35vh] overflow-y-auto">
+            <div id="settings-panel" class="px-4 sm:px-6 pt-4 pb-2 space-y-3.5 max-h-[40vh] overflow-y-auto">
 
                 <!-- Camera selector -->
-                <div class="flex items-center gap-2">
-                    <label for="camera-select" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Camera</label>
-                    <select id="camera-select" class="flex-1 bg-darkBg border border-white/10 rounded-lg px-2.5 py-2 text-xs text-gray-200 focus:outline-none focus:border-brandPurple/50 appearance-none truncate">
+                <div class="flex items-center gap-3">
+                    <label for="camera-select" class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">Camera</label>
+                    <select id="camera-select" class="flex-1 min-w-0 w-full bg-darkBg border border-white/10 rounded-xl px-3 py-2 text-xs sm:text-sm text-gray-200 focus:outline-none focus:border-brandPurple/50 appearance-none truncate">
                         <option value="">Detecting cameras…</option>
                     </select>
                 </div>
 
                 <!-- JPEG Quality slider -->
-                <div class="flex items-center gap-2">
-                    <label for="quality-slider" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Quality</label>
-                    <input id="quality-slider" type="range" min="10" max="95" value="45" class="flex-1">
-                    <span id="quality-slider-value" class="text-xs text-gray-400 font-mono w-8 text-right">45%</span>
+                <div class="flex items-center gap-3">
+                    <label for="quality-slider" class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">Quality</label>
+                    <input id="quality-slider" type="range" min="10" max="95" value="45" class="flex-1 min-w-0 w-full accent-brandPurple">
+                    <span id="quality-slider-value" class="text-xs sm:text-sm text-gray-400 font-mono w-10 text-right shrink-0">45%</span>
                 </div>
 
                 <!-- FPS display (read-only) -->
-                <div class="flex items-center gap-2">
-                    <span class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">FPS</span>
-                    <span id="fps-display" class="text-xs text-gray-300 font-mono">15</span>
-                    <span class="text-[10px] text-gray-500">(controlled remotely)</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">FPS</span>
+                    <span id="fps-display" class="text-xs sm:text-sm text-gray-300 font-mono shrink-0">15</span>
+                    <span class="text-[9px] sm:text-[10px] text-gray-500 truncate">(controlled remotely)</span>
                 </div>
 
                 <!-- Zoom slider (dynamic) -->
-                <div id="zoom-container" class="hidden items-center gap-2">
-                    <label for="zoom-slider" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Zoom</label>
-                    <input id="zoom-slider" type="range" class="flex-1">
-                    <span id="zoom-value" class="text-xs text-gray-400 font-mono w-8 text-right">1.0x</span>
+                <div id="zoom-container" class="hidden items-center gap-3">
+                    <label for="zoom-slider" class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">Zoom</label>
+                    <input id="zoom-slider" type="range" class="flex-1 min-w-0 w-full accent-brandPurple">
+                    <span id="zoom-value" class="text-xs sm:text-sm text-gray-400 font-mono w-10 text-right shrink-0">1.0x</span>
                 </div>
 
                 <!-- Focus Mode (dynamic) -->
-                <div id="focus-container" class="hidden items-center gap-2">
-                    <label for="focus-select" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Focus</label>
-                    <select id="focus-select" class="flex-1 bg-darkBg border border-white/10 rounded-lg px-2.5 py-2 text-xs text-gray-200 focus:outline-none focus:border-brandPurple/50 appearance-none truncate">
+                <div id="focus-container" class="hidden items-center gap-3">
+                    <label for="focus-select" class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">Focus</label>
+                    <select id="focus-select" class="flex-1 min-w-0 w-full bg-darkBg border border-white/10 rounded-xl px-3 py-2 text-xs sm:text-sm text-gray-200 focus:outline-none focus:border-brandPurple/50 appearance-none truncate">
                     </select>
                 </div>
 
                 <!-- Exposure Compensation (dynamic) -->
-                <div id="exposure-container" class="hidden items-center gap-2">
-                    <label for="exposure-slider" class="text-[10px] uppercase tracking-wider text-gray-500 font-semibold shrink-0 w-14">Exposure</label>
-                    <input id="exposure-slider" type="range" class="flex-1">
-                    <span id="exposure-value" class="text-xs text-gray-400 font-mono w-8 text-right">0</span>
+                <div id="exposure-container" class="hidden items-center gap-3 shrink-0">
+                    <label for="exposure-slider" class="text-[10px] sm:text-xs uppercase tracking-wider text-gray-500 font-bold shrink-0 w-16">Exposure</label>
+                    <input id="exposure-slider" type="range" class="flex-1 min-w-0 w-full accent-brandPurple">
+                    <span id="exposure-value" class="text-xs sm:text-sm text-gray-400 font-mono w-10 text-right shrink-0">0</span>
                 </div>
             </div>
 
             <!-- Action Buttons -->
-            <div id="action-buttons" class="flex items-center gap-2 px-4 pb-4 pt-1">
-                <!-- Refresh Devices -->
-                <button id="btn-refresh" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform" title="Refresh devices">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="23 4 23 10 17 10"/>
-                        <polyline points="1 20 1 14 7 14"/>
-                        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/>
-                        <path d="M20.49 15a9 9 0 01-14.85 3.36L1 14"/>
-                    </svg>
-                </button>
+            <div id="action-buttons" class="flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 pb-4 pt-2">
+                <div class="flex items-center gap-2 shrink-0">
+                    <!-- Refresh Devices -->
+                    <button id="btn-refresh" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform hover:text-white" title="Refresh devices">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <polyline points="1 20 1 14 7 14"/>
+                            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/>
+                            <path d="M20.49 15a9 9 0 01-14.85 3.36L1 14"/>
+                        </svg>
+                    </button>
 
-                <!-- Flip Camera -->
-                <button id="btn-flip" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform" title="Flip camera">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M16 3h5v5"/>
-                        <path d="M8 21H3v-5"/>
-                        <path d="M21 3l-7 7"/>
-                        <path d="M3 21l7-7"/>
-                    </svg>
-                </button>
+                    <!-- Flip Camera -->
+                    <button id="btn-flip" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform hover:text-white" title="Flip camera">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 3h5v5"/>
+                            <path d="M8 21H3v-5"/>
+                            <path d="M21 3l-7 7"/>
+                            <path d="M3 21l7-7"/>
+                        </svg>
+                    </button>
 
-                <!-- Toggle Flash -->
-                <button id="btn-flash" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-transform hidden" title="Toggle Flash">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                    </svg>
-                </button>
+                    <!-- Toggle Flash -->
+                    <button id="btn-flash" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl bg-darkBg border border-white/10 text-gray-400 active:scale-95 transition-colors hidden" title="Toggle Flash">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </button>
+                </div>
 
                 <!-- Start / Stop Streaming -->
-                <button id="btn-stream" class="flex-1 h-11 flex items-center justify-center gap-2 rounded-xl bg-brandPurple text-white font-semibold text-sm active:scale-95 transition-all hover-lift subtle-pulse">
+                <button id="btn-stream" class="flex-1 min-w-[140px] h-11 flex items-center justify-center gap-2 rounded-2xl bg-brandPurple text-white font-semibold text-sm active:scale-95 transition-all shadow-[0_4px_20px_-5px_rgba(99,102,241,0.5)]">
                     <!-- Play icon -->
-                    <svg id="icon-play" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <svg id="icon-play" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M8 5v14l11-7z"/>
                     </svg>
                     <!-- Stop icon (hidden by default) -->
-                    <svg id="icon-stop" class="w-5 h-5 hidden" viewBox="0 0 24 24" fill="currentColor">
-                        <rect x="6" y="6" width="12" height="12" rx="1"/>
+                    <svg id="icon-stop" class="w-5 h-5 hidden shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6 6h12v12H6z"/>
                     </svg>
-                    <span id="btn-stream-label">Start Streaming</span>
+                    <span id="btn-stream-label" class="truncate">Start Stream</span>
                 </button>
             </div>
         </footer>
