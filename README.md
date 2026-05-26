@@ -81,3 +81,6 @@ project/
     ├── dashboard.html    # PC browser display page
     └── mobile.html       # Mobile phone capture page
 ```
+
+## Author 
+Qamber Muhammad Hanif 
